@@ -1,0 +1,347 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Panel Coordinador - Perito App (Azure)</title>
+    <link rel="stylesheet" href="styles/main.css">
+    <style>
+        .azure-badge {
+            background: linear-gradient(135deg, #0078d4 0%, #50e6ff 100%);
+            color: white;
+            padding: 4px 12px;
+            border-radius: 12px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            display: inline-block;
+            margin-left: 10px;
+        }
+
+        .connection-status {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            background: white;
+            padding: 12px 20px;
+            border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            z-index: 1000;
+        }
+
+        .status-dot {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            background: #28a745;
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+
+        .offline .status-dot {
+            background: #dc3545;
+        }
+    </style>
+</head>
+<body>
+    <!-- Header -->
+    <header class="header">
+        <div class="container">
+            <div class="header-content">
+                <div class="logo">
+                    <svg width="32" height="32" viewBox="0 0 32 32" fill="none">
+                        <rect width="32" height="32" rx="8" fill="#0078d4"/>
+                        <path d="M16 8L24 12V20L16 24L8 20V12L16 8Z" fill="white"/>
+                    </svg>
+                    <h1>Panel Coordinador<span class="azure-badge">Azure</span></h1>
+                </div>
+                <div class="header-actions">
+                    <span id="userName" class="user-name">Coordinador</span>
+                    <button class="btn btn-secondary" onclick="logout()">Cerrar Sesión</button>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- Navigation Tabs -->
+    <nav class="tabs-nav">
+        <div class="container">
+            <button class="tab-btn active" data-tab="dashboard">Dashboard</button>
+            <button class="tab-btn" data-tab="casos">Casos</button>
+            <button class="tab-btn" data-tab="peritos">Peritos</button>
+            <button class="tab-btn" data-tab="asignaciones">Asignaciones</button>
+            <button class="tab-btn" data-tab="configuracion">Configuración Azure</button>
+        </div>
+    </nav>
+
+    <!-- Main Content -->
+    <main class="main-content">
+        <div class="container">
+            <!-- Dashboard Tab -->
+            <div id="dashboard" class="tab-content active">
+                <h2>Estadísticas Generales</h2>
+
+                <div class="stats-grid">
+                    <div class="stat-card">
+                        <div class="stat-icon" style="background: #0078d4;">
+                            <svg width="24" height="24" fill="white" viewBox="0 0 24 24">
+                                <path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 16H5V5h14v14z"/>
+                            </svg>
+                        </div>
+                        <div class="stat-info">
+                            <span class="stat-label">Total Casos</span>
+                            <span id="totalCasos" class="stat-value">0</span>
+                        </div>
+                    </div>
+
+                    <div class="stat-card">
+                        <div class="stat-icon" style="background: #ffc107;">
+                            <svg width="24" height="24" fill="white" viewBox="0 0 24 24">
+                                <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z"/>
+                            </svg>
+                        </div>
+                        <div class="stat-info">
+                            <span class="stat-label">Pendientes</span>
+                            <span id="casosPendientes" class="stat-value">0</span>
+                        </div>
+                    </div>
+
+                    <div class="stat-card">
+                        <div class="stat-icon" style="background: #17a2b8;">
+                            <svg width="24" height="24" fill="white" viewBox="0 0 24 24">
+                                <path d="M9 16.2L4.8 12l-1.4 1.4L9 19 21 7l-1.4-1.4L9 16.2z"/>
+                            </svg>
+                        </div>
+                        <div class="stat-info">
+                            <span class="stat-label">Asignados</span>
+                            <span id="casosAsignados" class="stat-value">0</span>
+                        </div>
+                    </div>
+
+                    <div class="stat-card">
+                        <div class="stat-icon" style="background: #28a745;">
+                            <svg width="24" height="24" fill="white" viewBox="0 0 24 24">
+                                <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/>
+                            </svg>
+                        </div>
+                        <div class="stat-info">
+                            <span class="stat-label">Completados</span>
+                            <span id="casosCompletados" class="stat-value">0</span>
+                        </div>
+                    </div>
+
+                    <div class="stat-card">
+                        <div class="stat-icon" style="background: #6f42c1;">
+                            <svg width="24" height="24" fill="white" viewBox="0 0 24 24">
+                                <path d="M16 11c1.66 0 2.99-1.34 2.99-3S17.66 5 16 5c-1.66 0-3 1.34-3 3s1.34 3 3 3zm-8 0c1.66 0 2.99-1.34 2.99-3S9.66 5 8 5C6.34 5 5 6.34 5 8s1.34 3 3 3zm0 2c-2.33 0-7 1.17-7 3.5V19h14v-2.5c0-2.33-4.67-3.5-7-3.5zm8 0c-.29 0-.62.02-.97.05 1.16.84 1.97 1.97 1.97 3.45V19h6v-2.5c0-2.33-4.67-3.5-7-3.5z"/>
+                            </svg>
+                        </div>
+                        <div class="stat-info">
+                            <span class="stat-label">Peritos Activos</span>
+                            <span id="totalPeritos" class="stat-value">0</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="dashboard-grid">
+                    <div class="card">
+                        <h3>Casos Recientes</h3>
+                        <div class="recent-items" id="casosRecientes">
+                            <p class="text-muted">Cargando casos...</p>
+                        </div>
+                    </div>
+
+                    <div class="card">
+                        <h3>Peritos con Más Casos</h3>
+                        <div class="recent-items" id="peritosTop">
+                            <p class="text-muted">Cargando peritos...</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Casos Tab -->
+            <div id="casos" class="tab-content">
+                <div class="section-header">
+                    <h2>Gestión de Casos</h2>
+                    <button class="btn btn-primary" onclick="mostrarModalNuevoCaso()">+ Nuevo Caso</button>
+                </div>
+
+                <div class="card">
+                    <div class="table-header">
+                        <input type="text" id="searchCasos" class="search-input" placeholder="Buscar casos...">
+                        <select id="filterEstado" class="filter-select">
+                            <option value="">Todos los estados</option>
+                            <option value="pendiente">Pendientes</option>
+                            <option value="asignado">Asignados</option>
+                            <option value="en_proceso">En Proceso</option>
+                            <option value="completado">Completados</option>
+                        </select>
+                    </div>
+
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th>Código</th>
+                                <th>Dirección</th>
+                                <th>Ciudad</th>
+                                <th>Perito</th>
+                                <th>Estado</th>
+                                <th>Acciones</th>
+                            </tr>
+                        </thead>
+                        <tbody id="casosTableBody">
+                            <tr>
+                                <td colspan="6" class="text-center">Cargando casos...</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Peritos Tab -->
+            <div id="peritos" class="tab-content">
+                <div class="section-header">
+                    <h2>Gestión de Peritos</h2>
+                    <button class="btn btn-primary" onclick="mostrarModalNuevoPerito()">+ Nuevo Perito</button>
+                </div>
+
+                <div class="card">
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th>Nombre</th>
+                                <th>Cédula</th>
+                                <th>Especialidad</th>
+                                <th>Teléfono</th>
+                                <th>Casos Asignados</th>
+                                <th>Estado</th>
+                                <th>Acciones</th>
+                            </tr>
+                        </thead>
+                        <tbody id="peritosTableBody">
+                            <tr>
+                                <td colspan="7" class="text-center">Cargando peritos...</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Asignaciones Tab -->
+            <div id="asignaciones" class="tab-content">
+                <h2>Asignar Casos a Peritos</h2>
+
+                <div class="card">
+                    <div class="assignment-grid">
+                        <div class="assignment-col">
+                            <h3>Casos Sin Asignar</h3>
+                            <div id="casosSinAsignar" class="assignment-list">
+                                <p class="text-muted">Cargando...</p>
+                            </div>
+                        </div>
+
+                        <div class="assignment-arrow">→</div>
+
+                        <div class="assignment-col">
+                            <h3>Peritos Disponibles</h3>
+                            <div id="peritosDisponibles" class="assignment-list">
+                                <p class="text-muted">Cargando...</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Configuración Azure Tab -->
+            <div id="configuracion" class="tab-content">
+                <h2>Configuración de Azure</h2>
+
+                <div class="card">
+                    <h3>Cosmos DB</h3>
+                    <div class="config-item">
+                        <label>Endpoint:</label>
+                        <input type="text" id="cosmosEndpoint" class="form-input" placeholder="https://xxx.documents.azure.com:443/">
+                    </div>
+                    <div class="config-item">
+                        <label>Primary Key:</label>
+                        <input type="password" id="cosmosKey" class="form-input" placeholder="Your Cosmos DB primary key">
+                    </div>
+                    <div class="config-item">
+                        <label>Database ID:</label>
+                        <input type="text" id="cosmosDatabase" class="form-input" value="PeritoAppDB">
+                    </div>
+                </div>
+
+                <div class="card">
+                    <h3>Blob Storage</h3>
+                    <div class="config-item">
+                        <label>Account Name:</label>
+                        <input type="text" id="storageAccount" class="form-input" placeholder="peritoappstorage">
+                    </div>
+                    <div class="config-item">
+                        <label>SAS Token:</label>
+                        <input type="password" id="storageSAS" class="form-input" placeholder="Your SAS token">
+                    </div>
+                    <div class="config-item">
+                        <label>Container Name:</label>
+                        <input type="text" id="storageContainer" class="form-input" value="fotos-evidencias">
+                    </div>
+                </div>
+
+                <div class="card">
+                    <button class="btn btn-primary" onclick="guardarConfiguracion()">Guardar Configuración</button>
+                    <button class="btn btn-secondary" onclick="testConnection()">Probar Conexión</button>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- Connection Status -->
+    <div class="connection-status" id="connectionStatus">
+        <div class="status-dot"></div>
+        <span>Conectado a Azure</span>
+    </div>
+
+    <!-- Scripts -->
+    <script src="https://cdn.jsdelivr.net/npm/@azure/cosmos@4.0.0/dist/cosmos.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@azure/storage-blob@12.17.0/dist/azure-storage-blob.min.js"></script>
+    <script src="js/app-azure.js"></script>
+
+    <script>
+        // Tab switching
+        document.querySelectorAll('.tab-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                const tabName = btn.dataset.tab;
+
+                document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+                document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+
+                btn.classList.add('active');
+                document.getElementById(tabName).classList.add('active');
+            });
+        });
+
+        function logout() {
+            if (confirm('¿Estás seguro de que deseas cerrar sesión?')) {
+                window.location.href = 'login.html';
+            }
+        }
+
+        function testConnection() {
+            alert('Probando conexión con Azure...');
+            // Implementar test de conexión
+        }
+
+        function guardarConfiguracion() {
+            alert('Configuración guardada exitosamente');
+        }
+    </script>
+</body>
+</html>

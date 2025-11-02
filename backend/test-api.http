@@ -1,0 +1,86 @@
+### Test de API de PeritoApp Backend
+### Archivo para usar con REST Client (VS Code extension) o Postman
+
+@baseUrl = http://localhost:5000
+@token = eyJ0eXAiOiJKV1QiLCJub25jZSI6ImxDNmpQQktObkhhc19ORHh3M25HWXdyV3pJWVR5cVBpQ2psSDVjS2hBOTgiLCJhbGciOiJSUzI1NiIsIng1dCI6InlFVXdtWFdMMTA3Q2MtN1FaMldTYmVPYjNzUSIsImtpZCI6InlFVXdtWFdMMTA3Q2MtN1FaMldTYmVPYjNzUSJ9.eyJhdWQiOiIwMDAwMDAwMy0wMDAwLTAwMDAtYzAwMC0wMDAwMDAwMDAwMDAiLCJpc3MiOiJodHRwczovL3N0cy53aW5kb3dzLm5ldC9mZDMyZGFmMC0xNDFjLTRjYjUtYTIyNC0xMDI1NTIwNGYzM2QvIiwiaWF0IjoxNzYyMDE3MzQ4LCJuYmYiOjE3NjIwMTczNDgsImV4cCI6MTc2MjEwNDA0OCwiYWNjdCI6MCwiYWNyIjoiMSIsImFjcnMiOlsicDEiXSwiYWlvIjoiQWFRQVcvOGFBQUFBdkJxU0dPVzBvK0NQcXpXRkUwTzZ3blFiaVhEMEUvbGJMNXIzNktLQlhtWCszZ3VYMG9TYnY4ajErMmZNQm44NytvaHhMNFlNUnlkN3kxVTN1L2Mxa3ZISEFSeXV1d0puOUladFlkZVhSV0NDQzlwN0JLNzlQeHY3ckd2MXZzdG1sWW5JVi9yNVpPcUllbnR1ZHNsZTZGUGx3RHdSM0hNcUlpMEpqYWg0eTNkVVdpY1FZU2ZoMldXZkxseG8yQWZTTWhveVZuN1BRd3BHbFB0aHFLSlZJQT09IiwiYW1yIjpbInJzYSIsIm1mYSJdLCJhcHBfZGlzcGxheW5hbWUiOiJHcmFwaCBFeHBsb3JlciIsImFwcGlkIjoiZGU4YmM4YjUtZDlmOS00OGIxLWE4YWQtYjc0OGRhNzI1MDY0IiwiYXBwaWRhY3IiOiIwIiwiZGV2aWNlaWQiOiIzYTcyMTU4Mi1kOTRiLTQ2NWYtYjY3NC0xZDA1ZjcyZDgwYWYiLCJmYW1pbHlfbmFtZSI6IlJhbWlyZXoiLCJnaXZlbl9uYW1lIjoiTWljaGFlbCIsImlkdHlwIjoidXNlciIsImlwYWRkciI6IjE5MS4xNTYuMjM2LjIwNyIsIm5hbWUiOiJNaWNoYWVsIFJhbWlyZXoiLCJvaWQiOiIwMjM0MzVkYi00ZDgxLTRmY2EtOTNjMS1iNTdjZDZjNzdlNTQiLCJwbGF0ZiI6IjMiLCJwdWlkIjoiMTAwMzIwMDQ5RTdFNDQ3MCIsInJoIjoiMS5BU1VBOE5veV9Sd1V0VXlpSkJBbFVnVHpQUU1BQUFBQUFBQUF3QUFBQUFBQUFBRHdBYndsQUEuIiwic2NwIjoib3BlbmlkIHByb2ZpbGUgVXNlci5SZWFkIGVtYWlsIiwic2lkIjoiMDA4YzY5NjktNWU1Yy1lODJjLTViYzQtZjM3NWRkMWNjNmI2Iiwic2lnbmluX3N0YXRlIjpbImttc2kiXSwic3ViIjoicG1SQ01Ua1hiMUI4eUFENmdrLUp0NkRIbnZGMnozbTAzUzBpRkp0WTJ5ZyIsInRlbmFudF9yZWdpb25fc2NvcGUiOiJTQSIsInRpZCI6ImZkMzJkYWYwLTE0MWMtNGNiNS1hMjI0LTEwMjU1MjA0ZjMzZCIsInVuaXF1ZV9uYW1lIjoibWljaGFlbC5yYW1pcmV6QGluZ2VuaWVyaWFsZWdhbC5jb20uY28iLCJ1cG4iOiJtaWNoYWVsLnJhbWlyZXpAaW5nZW5pZXJpYWxlZ2FsLmNvbS5jbyIsInV0aSI6IlBoYUN5THRZakV5ejRkcW1YUFh3QUEiLCJ2ZXIiOiIxLjAiLCJ3aWRzIjpbImI3OWZiZjRkLTNlZjktNDY4OS04MTQzLTc2YjE5NGU4NTUwOSJdLCJ4bXNfYWNkIjoxNDc0NjY0MDczLCJ4bXNfYWN0X2ZjdCI6IjMgNyIsInhtc19jYyI6WyJDUDEiXSwieG1zX2Z0ZCI6Ilc5d2ZGRW11ejh2VjRlenRqTlktYVluZlRDWkQ5SlhYdHNKV3M3b0NlVGtCZFhOM1pYTjBNeTFrYzIxeiIsInhtc19pZHJlbCI6IjEgMjYiLCJ4bXNfc3NtIjoiMSIsInhtc19zdCI6eyJzdWIiOiJfdUpVV0hJRVRPdzExTFo1eVdoTjBEVTFramhHNDFxd3prVzExNWQ4N1dVIn0sInhtc19zdWJfZmN0IjoiMTIgMyIsInhtc190Y2R0IjoxNTIyMjQ1ODQwLCJ4bXNfdG50X2ZjdCI6IjE0IDMifQ.U1QAzHSapNioofw5TQav21vftwRseS2wrNq0Z5P1tCYTU_1jChWaRTS2EqpL8uTKTf07b3d8lwFWndVqeQasEouIAtGYTI-eS2H1xMW3Y8j0tS3Dt-LgXbpHkD6jyROfjR4WhuFQ_N581k_Edi5GfOmraQ7aBjqdpGL6Hhy2y-Ny_ar6570F9Ilg7d5Fz2kPirI_OaVH-2BtyyklLO-Y7u87AZQsD5E95SchQrv1FCZRp0mGh1O_cSyocoxsgMiSKL6JPbgtnVXO6WV1VALWgyeq6XYpsjzJJwV0TP5v4E0zlnbAVzP4mAkkZiSb7BGfKZiWQOOKmTKtagEsiMt3Eg
+
+###############################################
+### 1. Health Check
+###############################################
+
+GET {{baseUrl}}/health
+
+
+###############################################
+### 2. Login con Azure AD
+###############################################
+
+POST {{baseUrl}}/api/auth/login
+Content-Type: application/json
+
+{
+  "accessToken": "{{token}}"
+}
+
+
+###############################################
+### 3. Get Mi Perfil
+###############################################
+
+GET {{baseUrl}}/api/auth/me
+Authorization: Bearer {{token}}
+
+
+###############################################
+### 4. Listar Casos
+###############################################
+
+GET {{baseUrl}}/api/casos
+Authorization: Bearer {{token}}
+
+
+###############################################
+### 5. Obtener Caso por ID
+###############################################
+
+GET {{baseUrl}}/api/casos/1
+Authorization: Bearer {{token}}
+
+
+###############################################
+### 6. Crear Carpetas en OneDrive
+###############################################
+
+POST {{baseUrl}}/api/onedrive/crear-carpeta
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "codigoCaso": "CASO-001"
+}
+
+
+###############################################
+### 7. Listar Archivos de un Caso en OneDrive
+###############################################
+
+GET {{baseUrl}}/api/onedrive/listar/CASO-001
+Authorization: Bearer {{token}}
+
+
+###############################################
+### 8. Crear Nuevo Caso
+###############################################
+
+POST {{baseUrl}}/api/casos
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "codigo": "CASO-TEST-001",
+  "direccion": "Calle 100 #15-20",
+  "ciudad": "Bogotá",
+  "barrio": "Chicó",
+  "tipoInmueble": "Apartamento",
+  "prioridad": "alta"
+}

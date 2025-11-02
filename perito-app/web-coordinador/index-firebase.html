@@ -1,0 +1,305 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Panel de Coordinador - Perito App (Firebase)</title>
+    <link rel="stylesheet" href="styles/main.css">
+</head>
+<body>
+    <!-- Pantalla de Login -->
+    <div id="loginScreen" class="screen active">
+        <div class="login-container">
+            <div class="login-card">
+                <div class="logo">
+                    <h1>📱 Perito App</h1>
+                    <p>Panel de Coordinador</p>
+                    <small style="color: #10B981;">🔥 Firebase Sync</small>
+                </div>
+                <form id="loginForm">
+                    <div class="form-group">
+                        <label for="username">Email</label>
+                        <input type="email" id="username" placeholder="coordinador@example.com" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="password">Contraseña</label>
+                        <input type="password" id="password" placeholder="Ingrese su contraseña" required>
+                    </div>
+                    <button type="submit" class="btn btn-primary">Iniciar Sesión</button>
+                    <p style="margin-top: 16px; text-align: center; font-size: 12px; color: #6B7280;">
+                        <strong>Nota:</strong> Primero crea un usuario en Firebase Authentication
+                    </p>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Dashboard Principal -->
+    <div id="dashboardScreen" class="screen">
+        <!-- Header -->
+        <header class="header">
+            <div class="header-left">
+                <h2>📋 Panel de Coordinador</h2>
+                <span style="margin-left: 12px; padding: 4px 8px; background: #D1FAE5; color: #059669; border-radius: 4px; font-size: 12px; font-weight: 600;">
+                    🔥 Firebase Live
+                </span>
+            </div>
+            <div class="header-right">
+                <span id="coordinadorNombre">Coordinador</span>
+                <button id="logoutBtn" class="btn btn-secondary">Cerrar Sesión</button>
+            </div>
+        </header>
+
+        <!-- Navegación -->
+        <nav class="nav-tabs">
+            <button class="nav-tab active" data-tab="casos">Gestión de Casos</button>
+            <button class="nav-tab" data-tab="peritos">Gestión de Peritos</button>
+            <button class="nav-tab" data-tab="reportes">Reportes</button>
+        </nav>
+
+        <!-- Contenido Principal -->
+        <main class="main-content">
+            <!-- Tab: Gestión de Casos -->
+            <div id="casosTab" class="tab-content active">
+                <div class="content-header">
+                    <h3>Casos de Avalúo</h3>
+                    <button id="nuevoCasoBtn" class="btn btn-primary">+ Nuevo Caso</button>
+                </div>
+
+                <!-- Estadísticas -->
+                <div class="stats-grid">
+                    <div class="stat-card">
+                        <div class="stat-icon" style="background: #EF4444;">📋</div>
+                        <div class="stat-content">
+                            <p class="stat-label">Sin Asignar</p>
+                            <p class="stat-value" id="statSinAsignar">0</p>
+                        </div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon" style="background: #F59E0B;">⏳</div>
+                        <div class="stat-content">
+                            <p class="stat-label">En Proceso</p>
+                            <p class="stat-value" id="statEnProceso">0</p>
+                        </div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon" style="background: #10B981;">✅</div>
+                        <div class="stat-content">
+                            <p class="stat-label">Completados</p>
+                            <p class="stat-value" id="statCompletados">0</p>
+                        </div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon" style="background: #3B82F6;">👥</div>
+                        <div class="stat-content">
+                            <p class="stat-label">Peritos Activos</p>
+                            <p class="stat-value" id="statPeritosActivos">0</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Filtros -->
+                <div class="filters">
+                    <input type="text" id="searchCasos" class="search-input" placeholder="Buscar por dirección, matrícula o código...">
+                    <select id="filterEstado" class="filter-select">
+                        <option value="">Todos los estados</option>
+                        <option value="sin_asignar">Sin Asignar</option>
+                        <option value="asignado">Asignado</option>
+                        <option value="en_progreso">En Progreso</option>
+                        <option value="completado">Completado</option>
+                    </select>
+                    <select id="filterPerito" class="filter-select">
+                        <option value="">Todos los peritos</option>
+                    </select>
+                </div>
+
+                <!-- Tabla de Casos -->
+                <div class="table-container">
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th>Código</th>
+                                <th>Dirección</th>
+                                <th>Tipo</th>
+                                <th>Municipio</th>
+                                <th>Perito Asignado</th>
+                                <th>Estado</th>
+                                <th>Fecha Límite</th>
+                                <th>Acciones</th>
+                            </tr>
+                        </thead>
+                        <tbody id="casosTableBody">
+                            <tr>
+                                <td colspan="8" style="text-align: center; padding: 40px; color: #6B7280;">
+                                    Cargando casos desde Firebase...
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Tab: Gestión de Peritos -->
+            <div id="peritosTab" class="tab-content">
+                <div class="content-header">
+                    <h3>Peritos Registrados</h3>
+                    <button id="nuevoPeritoBtn" class="btn btn-primary">+ Nuevo Perito</button>
+                </div>
+
+                <!-- Lista de Peritos -->
+                <div class="peritos-grid" id="peritosGrid">
+                    <p style="text-align: center; color: #6B7280; padding: 40px;">
+                        Cargando peritos desde Firebase...
+                    </p>
+                </div>
+            </div>
+
+            <!-- Tab: Reportes -->
+            <div id="reportesTab" class="tab-content">
+                <div class="content-header">
+                    <h3>Reportes y Estadísticas</h3>
+                </div>
+                <div class="reportes-container">
+                    <p>Módulo de reportes en desarrollo...</p>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- Modales (igual que index.html) -->
+    <!-- Modal: Nuevo Caso -->
+    <div id="nuevoCasoModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Nuevo Caso de Avalúo</h3>
+                <button class="close-modal">&times;</button>
+            </div>
+            <form id="nuevoCasoForm">
+                <div class="form-group">
+                    <label for="casoDireccion">Dirección *</label>
+                    <input type="text" id="casoDireccion" required>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="casoTipo">Tipo de Avalúo *</label>
+                        <select id="casoTipo" required>
+                            <option value="">Seleccione...</option>
+                            <option value="Avalúo Comercial">Avalúo Comercial</option>
+                            <option value="Avalúo Hipotecario">Avalúo Hipotecario</option>
+                            <option value="Verificación Catastral">Verificación Catastral</option>
+                            <option value="Avalúo Judicial">Avalúo Judicial</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="casoMunicipio">Municipio *</label>
+                        <input type="text" id="casoMunicipio" required>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label for="casoMatricula">Matrícula Inmobiliaria</label>
+                    <input type="text" id="casoMatricula">
+                </div>
+                <div class="form-group">
+                    <label for="casoPrioridad">Prioridad *</label>
+                    <select id="casoPrioridad" required>
+                        <option value="normal">Normal</option>
+                        <option value="alta">Alta</option>
+                        <option value="urgente">Urgente</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="casoFechaLimite">Fecha Límite *</label>
+                    <input type="date" id="casoFechaLimite" required>
+                </div>
+                <div class="form-group">
+                    <label for="casoPerito">Asignar a Perito</label>
+                    <select id="casoPerito">
+                        <option value="">Sin asignar</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="casoObservaciones">Observaciones</label>
+                    <textarea id="casoObservaciones" rows="3"></textarea>
+                </div>
+                <div class="modal-actions">
+                    <button type="button" class="btn btn-secondary cancel-modal">Cancelar</button>
+                    <button type="submit" class="btn btn-primary">Crear Caso</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Modal: Asignar Perito -->
+    <div id="asignarPeritoModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Asignar Perito al Caso</h3>
+                <button class="close-modal">&times;</button>
+            </div>
+            <div class="modal-body">
+                <p><strong>Caso:</strong> <span id="asignarCasoCodigo"></span></p>
+                <p><strong>Dirección:</strong> <span id="asignarCasoDireccion"></span></p>
+                <div class="form-group">
+                    <label for="selectPerito">Seleccionar Perito *</label>
+                    <select id="selectPerito" required>
+                        <option value="">Seleccione un perito...</option>
+                    </select>
+                </div>
+            </div>
+            <div class="modal-actions">
+                <button class="btn btn-secondary cancel-modal">Cancelar</button>
+                <button id="confirmarAsignacionBtn" class="btn btn-primary">Asignar</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal: Nuevo Perito -->
+    <div id="nuevoPeritoModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Registrar Nuevo Perito</h3>
+                <button class="close-modal">&times;</button>
+            </div>
+            <form id="nuevoPeritoForm">
+                <div class="form-group">
+                    <label for="peritoNombre">Nombre Completo *</label>
+                    <input type="text" id="peritoNombre" required>
+                </div>
+                <div class="form-group">
+                    <label for="peritoCedula">Cédula *</label>
+                    <input type="text" id="peritoCedula" required>
+                </div>
+                <div class="form-group">
+                    <label for="peritoTelefono">Teléfono *</label>
+                    <input type="tel" id="peritoTelefono" required>
+                </div>
+                <div class="form-group">
+                    <label for="peritoEmail">Email</label>
+                    <input type="email" id="peritoEmail">
+                </div>
+                <div class="form-group">
+                    <label for="peritoEspecialidad">Especialidad *</label>
+                    <select id="peritoEspecialidad" required>
+                        <option value="">Seleccione...</option>
+                        <option value="Especialista Urbano">Especialista Urbano</option>
+                        <option value="Especialista Rural">Especialista Rural</option>
+                        <option value="Especialista Comercial">Especialista Comercial</option>
+                        <option value="Especialista Industrial">Especialista Industrial</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="peritoPassword">Contraseña *</label>
+                    <input type="password" id="peritoPassword" required>
+                </div>
+                <div class="modal-actions">
+                    <button type="button" class="btn btn-secondary cancel-modal">Cancelar</button>
+                    <button type="submit" class="btn btn-primary">Registrar Perito</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Cargar Firebase y la app -->
+    <script type="module" src="js/app-firebase.js"></script>
+</body>
+</html>

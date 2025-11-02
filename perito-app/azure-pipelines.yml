@@ -1,0 +1,90 @@
+# Azure DevOps Pipeline - Perito App (Android + Microsoft MSAL)
+# Build automático cuando hay push a main
+
+trigger:
+- main
+
+pool:
+  vmImage: 'ubuntu-latest'
+
+variables:
+  NODE_VERSION: '18.x'
+  ANDROID_SDK_VERSION: '33'
+
+steps:
+# Paso 1: Instalar Node.js
+- task: NodeTool@0
+  displayName: 'Instalar Node.js $(NODE_VERSION)'
+  inputs:
+    versionSpec: '$(NODE_VERSION)'
+
+# Paso 2: Instalar Java (requerido para Android)
+- task: JavaToolInstaller@0
+  displayName: 'Instalar Java 17'
+  inputs:
+    versionSpec: '17'
+    jdkArchitectureOption: 'x64'
+    jdkSourceOption: 'PreInstalled'
+
+# Paso 3: Instalar dependencias npm
+- script: |
+    npm install
+  displayName: 'npm install'
+  workingDirectory: '$(Build.SourcesDirectory)'
+
+# Paso 4: Generar archivos nativos Android con Expo
+- script: |
+    npx expo prebuild --platform android --clean
+  displayName: 'Expo prebuild (generar Android nativo)'
+  workingDirectory: '$(Build.SourcesDirectory)'
+
+# Paso 5: Hacer ejecutable el gradlew
+- script: |
+    chmod +x gradlew
+  displayName: 'Hacer gradlew ejecutable'
+  workingDirectory: '$(Build.SourcesDirectory)/android'
+
+# Paso 6: Compilar APK Release
+- task: Gradle@2
+  displayName: 'Build Android APK Release'
+  inputs:
+    workingDirectory: '$(Build.SourcesDirectory)/android'
+    gradleWrapperFile: '$(Build.SourcesDirectory)/android/gradlew'
+    gradleOptions: '-Xmx3072m'
+    javaHomeOption: 'JDKVersion'
+    jdkVersionOption: '1.17'
+    jdkArchitectureOption: 'x64'
+    publishJUnitResults: false
+    tasks: 'assembleRelease'
+
+# Paso 7: Publicar APK como artefacto
+- task: PublishBuildArtifacts@1
+  displayName: 'Publicar APK'
+  inputs:
+    PathtoPublish: '$(Build.SourcesDirectory)/android/app/build/outputs/apk/release'
+    ArtifactName: 'android-apk-release'
+    publishLocation: 'Container'
+
+# Paso 8: Copiar APK a staging (para fácil descarga)
+- task: CopyFiles@2
+  displayName: 'Copiar APK a staging'
+  inputs:
+    SourceFolder: '$(Build.SourcesDirectory)/android/app/build/outputs/apk/release'
+    Contents: '**/*.apk'
+    TargetFolder: '$(Build.ArtifactStagingDirectory)'
+
+# Paso 9: Publicar artefacto final
+- task: PublishBuildArtifacts@1
+  displayName: 'Publicar artefacto final'
+  inputs:
+    PathtoPublish: '$(Build.ArtifactStagingDirectory)'
+    ArtifactName: 'perito-app-release'
+    publishLocation: 'Container'
+
+# Información de compilación
+- script: |
+    echo "✅ Compilación completada"
+    echo "📱 APK con Microsoft MSAL incluido"
+    echo "🔐 Backend: http://10.58.230.72:5000"
+    echo "📦 Descarga el APK desde la pestaña Artifacts"
+  displayName: 'Resumen de compilación'

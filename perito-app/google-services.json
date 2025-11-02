@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "273873873725",
+    "project_id": "savia-424d0",
+    "storage_bucket": "savia-424d0.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:273873873725:android:32d55788c3cc7293733354",
+        "android_client_info": {
+          "package_name": "com.ingenierialegal.saviaapp"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyA6sFJ3I2-pYLPdGPCBldotnBSoaENWbWA"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

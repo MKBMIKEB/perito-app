@@ -1,0 +1,68 @@
+# Expo
+.expo/
+.expo-shared/
+dist/
+web-build/
+
+# Node
+node_modules/
+npm-debug.log
+yarn-error.log
+package-lock.json
+yarn.lock
+
+# React Native
+.gradle/
+local.properties
+*.iml
+.idea/
+.DS_Store
+*.hprof
+.cxx/
+
+# Android
+perito-app/android/app/build/
+perito-app/android/build/
+perito-app/android/.gradle/
+perito-app/android/app/google-services.json
+
+# iOS
+perito-app/ios/Pods/
+perito-app/ios/**/*.xcworkspace/xcuserdata/
+perito-app/ios/**/*.xcworkspace/xcshareddata/
+
+# Testing
+coverage/
+
+# Env files
+.env
+.env.local
+.env.*.local
+
+# Logs
+logs/
+*.log
+
+# OS
+Thumbs.db
+
+# EAS
+eas-build-*/
+
+# Build artifacts
+*.apk
+*.ipa
+*.aab
+
+# Large files
+*.zip
+*.tar
+*.tar.gz
+*.rar
+*.7z
+jdk-*/
+
+# Backend specific
+backend/node_modules/
+backend/.env
+backend/logs/

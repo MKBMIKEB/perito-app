@@ -1,0 +1,108 @@
+name: Build and Deploy to Firebase
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main]
+
+env:
+  NODE_OPTIONS: '--max-old-space-size=4096'
+
+jobs:
+  # Job para validación en PRs
+  validate:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '18'
+        cache: 'npm'
+
+    - name: Install dependencies
+      run: npm ci --legacy-peer-deps
+
+    - name: Run setup validation
+      run: npm run check:setup
+
+    - name: Comment PR
+      uses: actions/github-script@v7
+      with:
+        script: |
+          github.rest.issues.createComment({
+            issue_number: context.issue.number,
+            owner: context.repo.owner,
+            repo: context.repo.repo,
+            body: '✅ Setup validation passed! Ready for deployment when merged.'
+          })
+
+  # Job para build y deploy (solo en main/develop)
+  build-and-deploy:
+    if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/develop')
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '18'
+        cache: 'npm'
+
+    - name: Install dependencies
+      run: npm ci --legacy-peer-deps
+
+    - name: Setup Expo and EAS
+      uses: expo/expo-github-action@v8
+      with:
+        expo-version: latest
+        eas-version: latest
+        token: ${{ secrets.EXPO_TOKEN }}
+
+    - name: Run setup validation
+      run: npm run check:setup
+
+    - name: Build APK for Firebase Distribution
+      run: eas build --platform android --profile firebase-dist --non-interactive --wait
+      env:
+        EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
+
+    - name: Get build artifact URL
+      id: build
+      run: |
+        # Este paso necesitaría ser customizado para obtener la URL del build
+        echo "build_url=https://expo.dev/builds" >> $GITHUB_OUTPUT
+
+    # Nota: El siguiente step requiere configuración adicional en Firebase
+    # - name: Deploy to Firebase App Distribution
+    #   uses: wzieba/Firebase-Distribution-Github-Action@v1
+    #   with:
+    #     appId: ${{ secrets.FIREBASE_APP_ID }}
+    #     serviceCredentialsFileContent: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+    #     groups: testers
+    #     file: downloaded-apk.apk
+    #     releaseNotes: |
+    #       🚀 Automated deployment
+    #       Branch: ${{ github.ref_name }}
+    #       Commit: ${{ github.sha }}
+    #       Build: ${{ steps.build.outputs.build_url }}
+
+    - name: Notify deployment success
+      if: success()
+      run: |
+        echo "🚀 Build completed successfully!"
+        echo "📱 APK ready for download from Expo dashboard"
+        echo "🔗 Build URL: ${{ steps.build.outputs.build_url }}"
+
+    - name: Notify deployment failure
+      if: failure()
+      run: |
+        echo "❌ Build failed"
+        echo "Check the logs above for details"

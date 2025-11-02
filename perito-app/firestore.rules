@@ -1,0 +1,96 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Función helper para verificar autenticación
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    // Función helper para verificar si es coordinador
+    function isCoordinator() {
+      return isAuthenticated() &&
+             request.auth.token.email != null &&
+             request.auth.token.email.matches('.*coordinador.*');
+    }
+
+    // ===========================================
+    // COLECCIÓN: CASOS
+    // ===========================================
+    match /casos/{casoId} {
+      // Coordinadores: pueden hacer todo
+      allow read, write: if isCoordinator();
+
+      // Peritos: pueden leer solo sus casos asignados
+      allow read: if isAuthenticated() &&
+                     resource.data.peritoId == request.auth.uid;
+
+      // Peritos: pueden actualizar solo el estado de sus casos
+      allow update: if isAuthenticated() &&
+                       resource.data.peritoId == request.auth.uid &&
+                       request.resource.data.diff(resource.data).affectedKeys()
+                         .hasOnly(['estado', 'fechaActualizacion']);
+
+      // Cualquier usuario autenticado puede leer y escribir (desarrollo)
+      // NOTA: En producción, comenta estas líneas y usa las de arriba
+      allow read, write: if isAuthenticated();
+    }
+
+    // ===========================================
+    // COLECCIÓN: PERITOS
+    // ===========================================
+    match /peritos/{peritoId} {
+      // Coordinadores: pueden gestionar peritos
+      allow read, write: if isCoordinator();
+
+      // Peritos: pueden leer su propia información
+      allow read: if isAuthenticated() && peritoId == request.auth.uid;
+
+      // Cualquier usuario autenticado puede leer y escribir (desarrollo)
+      // NOTA: En producción, comenta esta línea
+      allow read, write: if isAuthenticated();
+    }
+
+    // ===========================================
+    // COLECCIÓN: FORMULARIOS
+    // ===========================================
+    match /formularios/{formularioId} {
+      // Coordinadores: pueden leer todos los formularios
+      allow read: if isCoordinator();
+
+      // Peritos: pueden crear formularios
+      allow create: if isAuthenticated();
+
+      // Peritos: pueden leer sus propios formularios
+      allow read: if isAuthenticated() &&
+                     resource.data.peritoId == request.auth.uid;
+
+      // Cualquier usuario autenticado puede leer y escribir (desarrollo)
+      // NOTA: En producción, comenta esta línea
+      allow read, write: if isAuthenticated();
+    }
+
+    // ===========================================
+    // COLECCIÓN: FOTOS
+    // ===========================================
+    match /fotos/{fotoId} {
+      // Coordinadores: pueden ver todas las fotos
+      allow read: if isCoordinator();
+
+      // Peritos: pueden crear y leer sus propias fotos
+      allow create: if isAuthenticated();
+      allow read: if isAuthenticated() &&
+                     resource.data.peritoId == request.auth.uid;
+
+      // Cualquier usuario autenticado puede leer y escribir (desarrollo)
+      // NOTA: En producción, comenta esta línea
+      allow read, write: if isAuthenticated();
+    }
+
+    // ===========================================
+    // REGLA POR DEFECTO: DENEGAR TODO
+    // ===========================================
+    // Cualquier colección no especificada será denegada por defecto
+  }
+}

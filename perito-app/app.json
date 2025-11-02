@@ -1,0 +1,64 @@
+{
+  "expo": {
+    "name": "Perito App",
+    "slug": "perito-app",
+    "version": "1.1.0",
+    "owner": "mkb_r",
+    "projectId": "perito-app-mkb-r",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "light",
+    "splash": {
+      "image": "./assets/splash.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#1D4ED8"
+    },
+    "assetBundlePatterns": [
+      "**/*"
+    ],
+    "ios": {
+      "supportsTablet": true,
+      "infoPlist": {
+        "NSLocationWhenInUseUsageDescription": "Esta app necesita acceso a la ubicación para verificar coordenadas en campo.",
+        "NSCameraUsageDescription": "Esta app necesita acceso a la cámara para capturar evidencias."
+      }
+    },
+    "android": {
+      "package": "com.ingenierialegal.saviaapp",
+      "googleServicesFile": "./google-services.json",
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "backgroundColor": "#1D4ED8"
+      },
+      "compileSdkVersion": 34,
+      "targetSdkVersion": 33,
+      "permissions": [
+        "android.permission.ACCESS_FINE_LOCATION",
+        "android.permission.ACCESS_COARSE_LOCATION",
+        "android.permission.CAMERA",
+        "android.permission.RECORD_AUDIO",
+        "android.permission.WRITE_EXTERNAL_STORAGE",
+        "android.permission.DETECT_SCREEN_CAPTURE"
+      ],
+      "config": {
+        "googleMaps": {
+          "apiKey": "AIzaSyA6sFJ3I2-pYLPdGPCBldotnBSoaENWbWA"
+        }
+      }
+    },
+    "web": {
+      "favicon": "./assets/favicon.png"
+    },
+    "plugins": [
+      "expo-location",
+      "expo-camera",
+      "expo-notifications",
+      "./app.plugin.js"
+    ],
+    "extra": {
+      "eas": {
+        "projectId": "023289c3-1823-47d1-a953-3ce10615b895"
+      }
+    }
+  }
+}

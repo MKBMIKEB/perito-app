@@ -1,0 +1,65 @@
+{
+  "indexes": [
+    {
+      "collectionGroup": "casos",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "peritoId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "estado",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "fechaCreacion",
+          "order": "DESCENDING"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "casos",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "peritoId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "fechaLimite",
+          "order": "ASCENDING"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "formularios",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "peritoId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "fechaCreacion",
+          "order": "DESCENDING"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "fotos",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "asignacionId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "fechaCaptura",
+          "order": "DESCENDING"
+        }
+      ]
+    }
+  ],
+  "fieldOverrides": []
+}
