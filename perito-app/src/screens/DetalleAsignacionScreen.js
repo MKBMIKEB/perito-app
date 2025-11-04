@@ -123,11 +123,11 @@ const DetalleAsignacionScreen = ({ route, navigation }) => {
   const getEstadoColor = (estado) => {
     switch (estado) {
       case 'pendiente':
-        return '#F59E0B';
+        return '#BDBDBD';
       case 'en_proceso':
-        return '#3B82F6';
+        return '#9E9E9E';
       case 'completado':
-        return '#10B981';
+        return '#4F4F4F';
       default:
         return '#6B7280';
     }
@@ -157,7 +157,7 @@ const DetalleAsignacionScreen = ({ route, navigation }) => {
   if (loading) {
     return (
       <View style={styles.centerContainer}>
-        <ActivityIndicator size="large" color="#1D4ED8" />
+        <ActivityIndicator size="large" color="#6B7280" />
         <Text style={styles.loadingText}>Cargando detalle del caso...</Text>
       </View>
     );
@@ -324,13 +324,13 @@ const InfoRow = ({ label, value, capitalize = false }) => (
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F8FAFC',
+    backgroundColor: '#FFFFFF',
   },
   centerContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: '#F8FAFC',
+    backgroundColor: '#FFFFFF',
     padding: 20,
   },
   scrollView: {
@@ -346,12 +346,12 @@ const styles = StyleSheet.create({
   },
   errorText: {
     fontSize: 16,
-    color: '#EF4444',
+    color: '#111111',
     textAlign: 'center',
     marginBottom: 20,
   },
   backButton: {
-    backgroundColor: '#1D4ED8',
+    backgroundColor: '#000000',
     paddingHorizontal: 24,
     paddingVertical: 12,
     borderRadius: 8,
@@ -412,7 +412,7 @@ const styles = StyleSheet.create({
   sectionTitle: {
     fontSize: 16,
     fontWeight: 'bold',
-    color: '#374151',
+    color: '#111111',
     marginBottom: 8,
   },
   infoCard: {
@@ -430,7 +430,7 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     paddingVertical: 8,
     borderBottomWidth: 1,
-    borderBottomColor: '#F3F4F6',
+    borderBottomColor: '#E5E5E5',
   },
   infoLabel: {
     fontSize: 14,
@@ -463,15 +463,15 @@ const styles = StyleSheet.create({
   },
   actionCardText: {
     fontSize: 15,
-    color: '#1D4ED8',
+    color: '#111111',
     fontWeight: '600',
   },
   actionCardIcon: {
     fontSize: 18,
-    color: '#1D4ED8',
+    color: '#111111',
   },
   primaryActionButton: {
-    backgroundColor: '#1D4ED8',
+    backgroundColor: '#000000',
     borderRadius: 12,
     padding: 16,
     flexDirection: 'row',
@@ -501,14 +501,14 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 2,
-    borderColor: '#1D4ED8',
+    borderColor: '#111111',
   },
   secondaryActionIcon: {
     fontSize: 20,
     marginRight: 8,
   },
   secondaryActionText: {
-    color: '#1D4ED8',
+    color: '#111111',
     fontSize: 16,
     fontWeight: 'bold',
   },

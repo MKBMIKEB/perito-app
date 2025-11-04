@@ -310,11 +310,50 @@
     </div>
 
     <!-- Scripts -->
+    <script src="https://alcdn.msauth.net/browser/2.38.1/js/msal-browser.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@azure/cosmos@4.0.0/dist/cosmos.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@azure/storage-blob@12.17.0/dist/azure-storage-blob.min.js"></script>
     <script src="js/app-azure.js"></script>
 
     <script>
+        // Configuración de MSAL
+        const msalConfig = {
+            auth: {
+                clientId: 'c8256ffe-b0fc-406d-8832-736240ae5570',
+                authority: 'https://login.microsoftonline.com/fd32daf0-141c-4cb5-a224-10255204f33d',
+                redirectUri: window.location.origin + '/web/login-azure.html',  // Añadido /web/
+                postLogoutRedirectUri: window.location.origin + '/web/login-azure.html'  // Añadido /web/
+            },
+            cache: {
+                cacheLocation: 'localStorage',
+                storeAuthStateInCookie: false
+            }
+        };
+
+        const msalInstance = new msal.PublicClientApplication(msalConfig);
+
+        // Inicializar MSAL
+        msalInstance.initialize().then(() => {
+            console.log('✅ MSAL inicializado en dashboard');
+
+            // Verificar autenticación
+            const token = localStorage.getItem('azureAccessToken');
+            const accountJSON = localStorage.getItem('azureAccount');
+
+            if (!token || !accountJSON) {
+                console.log('❌ No hay sesión activa, redirigiendo a login...');
+                window.location.href = 'login-azure.html';
+                return;
+            }
+
+            try {
+                const account = JSON.parse(accountJSON);
+                document.getElementById('userName').textContent = account.name || account.username || 'Coordinador';
+            } catch (error) {
+                console.error('Error parseando cuenta:', error);
+            }
+        });
+
         // Tab switching
         document.querySelectorAll('.tab-btn').forEach(btn => {
             btn.addEventListener('click', () => {
@@ -328,9 +367,36 @@
             });
         });
 
-        function logout() {
+        async function logout() {
             if (confirm('¿Estás seguro de que deseas cerrar sesión?')) {
-                window.location.href = 'login.html';
+                try {
+                    // Limpiar localStorage
+                    localStorage.removeItem('azureAccessToken');
+                    localStorage.removeItem('azureAccount');
+
+                    // Limpiar cache de MSAL
+                    const accounts = msalInstance.getAllAccounts();
+                    if (accounts.length > 0) {
+                        // En desarrollo local (HTTP), solo limpiamos sesión local
+                        if (window.location.protocol === 'http:') {
+                            console.log('🔓 Logout local (desarrollo)');
+                            window.location.href = 'login-azure.html';
+                        } else {
+                            // En producción (HTTPS), hacer logout completo de Azure AD
+                            const logoutRequest = {
+                                account: accounts[0],
+                                postLogoutRedirectUri: window.location.origin + '/login-azure.html'
+                            };
+                            await msalInstance.logoutRedirect(logoutRequest);
+                        }
+                    } else {
+                        window.location.href = 'login-azure.html';
+                    }
+                } catch (error) {
+                    console.error('Error en logout:', error);
+                    // Si falla, redirigir manualmente
+                    window.location.href = 'login-azure.html';
+                }
             }
         }
 

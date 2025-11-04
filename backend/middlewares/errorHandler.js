@@ -15,6 +15,22 @@ function errorHandler(err, req, res, next) {
   console.error('Usuario:', req.user?.email || 'No autenticado');
   console.error('Mensaje:', err.message);
   console.error('Stack:', err.stack);
+  // Redactar campos sensibles del body antes de loguear
+  const safeBody = (() => {
+    try {
+      const b = typeof req.body === 'object' && req.body !== null ? { ...req.body } : req.body;
+      if (b && typeof b === 'object') {
+        if (typeof b.password !== 'undefined') b.password = '<redacted>';
+        if (typeof b.client_secret !== 'undefined') b.client_secret = '<redacted>';
+      }
+      return b;
+    } catch {
+      return undefined;
+    }
+  })();
+  if (safeBody) {
+    console.error('Body (safe):', safeBody);
+  }
   console.error('═══════════════════════════════════════════════════');
 
   // Enviar a Application Insights
@@ -71,8 +87,8 @@ class ValidationError extends AppError {
 }
 
 class AuthenticationError extends AppError {
-  constructor(message = 'No autenticado') {
-    super(message, 401);
+  constructor(message = 'No autenticado', details = null) {
+    super(message, 401, details);
   }
 }
 

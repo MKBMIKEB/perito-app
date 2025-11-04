@@ -1,9 +1,10 @@
 import React from 'react';
 import { View, ActivityIndicator, Text, StyleSheet } from 'react-native';
+import { COLORS } from '../constants';
 
 const LoadingSpinner = ({ message = 'Cargando...' }) => (
   <View style={styles.container}>
-    <ActivityIndicator size="large" color="#1D4ED8" />
+    <ActivityIndicator size="large" color={COLORS.icon} />
     <Text style={styles.message}>{message}</Text>
   </View>
 );
@@ -13,11 +14,11 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: '#F8FAFC',
+    backgroundColor: COLORS.background,
   },
   message: {
     marginTop: 10,
-    color: '#6B7280',
+    color: COLORS.textSecondary,
     fontSize: 16,
   },
 });

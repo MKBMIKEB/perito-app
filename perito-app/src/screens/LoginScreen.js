@@ -7,10 +7,13 @@ import { useState, useEffect } from 'react';
 import {
   View,
   Text,
+  TextInput,
   TouchableOpacity,
   StyleSheet,
   Alert,
   ActivityIndicator,
+  KeyboardAvoidingView,
+  Platform,
 } from 'react-native';
 import AzureAuthService from '../services/AzureAuthService';
 import ApiService from '../services/ApiService';
@@ -18,6 +21,8 @@ import ApiService from '../services/ApiService';
 const LoginScreen = ({ onLoginSuccess }) => {
   const [loading, setLoading] = useState(true);
   const [loggingIn, setLoggingIn] = useState(false);
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
 
   useEffect(() => {
     checkAuthentication();
@@ -66,51 +71,97 @@ const LoginScreen = ({ onLoginSuccess }) => {
   };
 
   /**
-   * Manejar login con Azure AD
+   * Manejar login con email/password (ROPC - funciona en Expo Go)
    */
   const handleLogin = async () => {
     try {
+      // Validar campos
+      if (!email || !password) {
+        Alert.alert('Campos requeridos', 'Por favor ingresa tu email y contraseña');
+        return;
+      }
+
+      // Validar formato de email
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (!emailRegex.test(email)) {
+        Alert.alert('Email inválido', 'Por favor ingresa un email válido');
+        return;
+      }
+
       setLoggingIn(true);
 
-      console.log('🔐 Iniciando autenticación con Azure AD...');
+      console.log('🔐 Iniciando login con email/password...');
 
-      // 1. Login con Azure AD (abre navegador)
-      const { accessToken, account } = await AzureAuthService.login();
-      console.log('✅ Autenticado con Azure AD:', account.username);
+      // Login con email/password (ROPC)
+      const result = await AzureAuthService.loginWithPassword(email, password);
 
-      // 2. Enviar token al backend para validación
-      console.log('📡 Validando token con backend...');
-      const userData = await ApiService.login(accessToken);
-      console.log('✅ Usuario autenticado en backend:', userData.user.displayName);
+      if (result.success) {
+        console.log('✅ Autenticado:', result.account.name);
 
-      // 3. Mostrar mensaje de éxito
-      Alert.alert(
-        'Bienvenido',
-        `Hola ${userData.user.displayName}`,
-        [
-          {
-            text: 'Continuar',
-            onPress: () => {
-              if (onLoginSuccess) {
-                onLoginSuccess();
-              }
+        // Mostrar mensaje de éxito
+        Alert.alert(
+          'Bienvenido',
+          `Hola ${result.account.name}\n\n✅ Tokens de Microsoft obtenidos correctamente.`,
+          [
+            {
+              text: 'Continuar',
+              onPress: () => {
+                if (onLoginSuccess) {
+                  onLoginSuccess();
+                }
+              },
             },
-          },
-        ]
-      );
+          ]
+        );
+      }
 
     } catch (error) {
       console.error('❌ Error en login:', error);
 
-      let errorMessage = 'No se pudo iniciar sesión. Por favor intenta nuevamente.';
+      let errorMessage = error.message || 'No se pudo iniciar sesión. Por favor intenta nuevamente.';
 
-      if (error.message) {
-        if (error.message.includes('user_cancelled')) {
-          errorMessage = 'Inicio de sesión cancelado';
-        } else if (error.message.includes('network')) {
-          errorMessage = 'Error de conexión. Verifica tu conexión a internet.';
-        }
+      Alert.alert('Error de Autenticación', errorMessage);
+    } finally {
+      setLoggingIn(false);
+    }
+  };
+
+  /**
+   * Manejar login con OAuth 2.0 (para APK de desarrollo)
+   */
+  const handleOAuthLogin = async () => {
+    try {
+      setLoggingIn(true);
+
+      console.log('🔐 Iniciando OAuth 2.0 con Azure AD...');
+
+      // Login con OAuth 2.0 completo (abre navegador)
+      const result = await AzureAuthService.loginWithOAuth();
+
+      if (result.success) {
+        console.log('✅ Autenticado con OAuth:', result.account.name);
+
+        // Mostrar mensaje de éxito
+        Alert.alert(
+          'Bienvenido',
+          `Hola ${result.account.name}\n\nHas iniciado sesión correctamente.`,
+          [
+            {
+              text: 'Continuar',
+              onPress: () => {
+                if (onLoginSuccess) {
+                  onLoginSuccess();
+                }
+              },
+            },
+          ]
+        );
       }
+
+    } catch (error) {
+      console.error('❌ Error en login OAuth:', error);
+
+      let errorMessage = error.message || 'No se pudo iniciar sesión. Por favor intenta nuevamente.';
 
       Alert.alert('Error de Autenticación', errorMessage);
     } finally {
@@ -125,7 +176,7 @@ const LoginScreen = ({ onLoginSuccess }) => {
     return (
       <View style={styles.container}>
         <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color="#1D4ED8" />
+          <ActivityIndicator size="large" color="#6B7280" />
           <Text style={styles.loadingText}>Verificando autenticación...</Text>
         </View>
       </View>
@@ -136,7 +187,10 @@ const LoginScreen = ({ onLoginSuccess }) => {
    * Pantalla de login
    */
   return (
-    <View style={styles.container}>
+    <KeyboardAvoidingView
+      style={styles.container}
+      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+    >
       {/* Logo y Título */}
       <View style={styles.logoContainer}>
         <View style={styles.logoPlaceholder}>
@@ -149,12 +203,45 @@ const LoginScreen = ({ onLoginSuccess }) => {
       {/* Información */}
       <View style={styles.infoContainer}>
         <Text style={styles.infoText}>
-          Inicia sesión con tu cuenta de Microsoft para acceder a la aplicación
+          Inicia sesión con tu cuenta de Microsoft
         </Text>
       </View>
 
-      {/* Botón de Login con Microsoft */}
+      {/* Formulario de Login */}
       <View style={styles.loginContainer}>
+        {/* Campo Email */}
+        <View style={styles.inputContainer}>
+          <Text style={styles.inputLabel}>Email de Microsoft</Text>
+          <TextInput
+            style={styles.input}
+            placeholder="ejemplo@ingenierialegal.com.co"
+            placeholderTextColor="#9CA3AF"
+            value={email}
+            onChangeText={setEmail}
+            keyboardType="email-address"
+            autoCapitalize="none"
+            autoCorrect={false}
+            editable={!loggingIn}
+          />
+        </View>
+
+        {/* Campo Contraseña */}
+        <View style={styles.inputContainer}>
+          <Text style={styles.inputLabel}>Contraseña</Text>
+          <TextInput
+            style={styles.input}
+            placeholder="Tu contraseña de Microsoft"
+            placeholderTextColor="#9CA3AF"
+            value={password}
+            onChangeText={setPassword}
+            secureTextEntry
+            autoCapitalize="none"
+            autoCorrect={false}
+            editable={!loggingIn}
+          />
+        </View>
+
+        {/* Botón de Login */}
         <TouchableOpacity
           style={[styles.loginButton, loggingIn && styles.buttonDisabled]}
           onPress={handleLogin}
@@ -163,33 +250,49 @@ const LoginScreen = ({ onLoginSuccess }) => {
           <View style={styles.buttonContent}>
             <Text style={styles.microsoftIcon}>🔐</Text>
             <Text style={styles.loginButtonText}>
-              {loggingIn ? 'Iniciando sesión...' : 'Iniciar Sesión con Microsoft'}
+              {loggingIn ? 'Autenticando...' : 'Iniciar Sesión'}
             </Text>
           </View>
         </TouchableOpacity>
 
         {loggingIn && (
-          <ActivityIndicator size="small" color="#1D4ED8" style={styles.spinner} />
+          <View style={styles.loadingContainer}>
+            <ActivityIndicator size="small" color="#6B7280" style={styles.spinner} />
+            <Text style={styles.loadingText}>
+              Validando credenciales y obteniendo tokens...
+            </Text>
+          </View>
+        )}
+
+        {!loggingIn && (
+          <View style={styles.infoBox}>
+            <Text style={styles.infoBoxTitle}>✅ Login Verificado</Text>
+            <Text style={styles.infoBoxText}>
+              • Tokens reales de Microsoft Graph{'\n'}
+              • Acceso a OneDrive para subir fotos{'\n'}
+              • Funciona en Expo Go con cuenta sin MFA
+            </Text>
+          </View>
         )}
 
         <Text style={styles.helpText}>
-          Se abrirá una ventana del navegador para autenticarte de forma segura
+          Usa una cuenta sin MFA habilitado
         </Text>
       </View>
 
       {/* Footer */}
       <View style={styles.footer}>
         <Text style={styles.footerText}>© 2025 Observatorio Inmobiliario</Text>
-        <Text style={styles.versionText}>Versión 2.0.0 - Azure Integration</Text>
+        <Text style={styles.versionText}>Versión 2.1.0 - ROPC Auth (Sin MFA)</Text>
       </View>
-    </View>
+    </KeyboardAvoidingView>
   );
 };
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F8FAFC',
+    backgroundColor: '#FFFFFF',
     padding: 20,
   },
   loadingContainer: {
@@ -211,7 +314,7 @@ const styles = StyleSheet.create({
   logoPlaceholder: {
     width: 120,
     height: 120,
-    backgroundColor: '#1D4ED8',
+    backgroundColor: '#000000',
     borderRadius: 60,
     justifyContent: 'center',
     alignItems: 'center',
@@ -224,7 +327,7 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 28,
     fontWeight: 'bold',
-    color: '#1D4ED8',
+    color: '#111111',
     marginBottom: 8,
   },
   subtitle: {
@@ -246,11 +349,30 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     paddingHorizontal: 10,
   },
+  inputContainer: {
+    marginBottom: 20,
+  },
+  inputLabel: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#374151',
+    marginBottom: 8,
+  },
+  input: {
+    backgroundColor: '#F9FAFB',
+    borderWidth: 1,
+    borderColor: '#D1D5DB',
+    borderRadius: 8,
+    padding: 14,
+    fontSize: 16,
+    color: '#111827',
+  },
   loginButton: {
-    backgroundColor: '#1D4ED8',
+    backgroundColor: '#000000',
     borderRadius: 12,
     padding: 18,
     alignItems: 'center',
+    marginTop: 10,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
@@ -276,6 +398,34 @@ const styles = StyleSheet.create({
   },
   spinner: {
     marginTop: 20,
+  },
+  loadingContainer: {
+    alignItems: 'center',
+    marginTop: 20,
+  },
+  loadingText: {
+    textAlign: 'center',
+    color: '#6B7280',
+    fontSize: 13,
+    marginTop: 12,
+    paddingHorizontal: 30,
+  },
+  infoBox: {
+    backgroundColor: '#F3F4F6',
+    borderRadius: 12,
+    padding: 16,
+    marginTop: 20,
+  },
+  infoBoxTitle: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#111827',
+    marginBottom: 8,
+  },
+  infoBoxText: {
+    fontSize: 13,
+    color: '#6B7280',
+    lineHeight: 20,
   },
   helpText: {
     textAlign: 'center',

@@ -15,6 +15,8 @@ import {
   Alert,
   Switch,
   Platform,
+  ToastAndroid,
+  Linking,
 } from 'react-native';
 import {
   MapPin,
@@ -29,20 +31,26 @@ import {
   Navigation
 } from 'lucide-react-native';
 import * as Location from 'expo-location';
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import DatabaseService from '../services/DatabaseService-native';
 import CasosService from '../services/CasosService';
+import ApiService from '../services/ApiService';
+import { COLORS } from '../constants';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const FormularioCampoScreen = ({ navigation, route }) => {
-  const { asignacionId, peritoId, asignacionData } = route.params || {};
+  const { asignacionId, peritoId, asignacionData, caso } = route.params || {};
+  // Derivar identificadores para backend/OneDrive
+  const casoIdBackend = (caso && caso.id) || (asignacionData && asignacionData.id) || null;
+  const codigoCaso = (caso && caso.codigo) || (asignacionData && asignacionData.codigo) || asignacionId;
 
-  // Estados del formulario - Información General
+  // Estados del formulario - InformaciÃƒÂ³n General
   const [direccion, setDireccion] = useState(asignacionData?.direccion || '');
   const [matricula, setMatricula] = useState('');
   const [tipoPredio, setTipoPredio] = useState('Casa');
   const [propietario, setPropietario] = useState('');
   const [telefono, setTelefono] = useState('');
 
-  // Características Físicas
+  // CaracterÃƒÂ­sticas FÃƒÂ­sicas
   const [areaTerreno, setAreaTerreno] = useState('');
   const [areaConstruida, setAreaConstruida] = useState('');
   const [frente, setFrente] = useState('');
@@ -53,14 +61,14 @@ const FormularioCampoScreen = ({ navigation, route }) => {
   const [garajes, setGarajes] = useState('');
   const [estadoConservacion, setEstadoConservacion] = useState('Bueno');
 
-  // Servicios Públicos
+  // Servicios PÃƒÂºblicos
   const [agua, setAgua] = useState(true);
   const [luz, setLuz] = useState(true);
   const [gas, setGas] = useState(false);
   const [alcantarillado, setAlcantarillado] = useState(true);
   const [internet, setInternet] = useState(false);
 
-  // Ubicación
+  // UbicaciÃƒÂ³n
   const [coordenadas, setCoordenadas] = useState(null);
   const [loadingGPS, setLoadingGPS] = useState(false);
 
@@ -76,46 +84,39 @@ const FormularioCampoScreen = ({ navigation, route }) => {
 
   const cargarBorrador = async () => {
     try {
-      const borrador = await AsyncStorage.getItem(`formulario_${asignacionId}`);
+      console.log('?? Cargando borrador desde SQLite...');
+      const borrador = await DatabaseService.loadBorrador(asignacionId);
       if (borrador) {
-        const data = JSON.parse(borrador);
+        console.log('? Borrador encontrado en SQLite');
         // Cargar datos guardados
-        setDireccion(data.direccion || '');
-        setMatricula(data.matricula || '');
-        setTipoPredio(data.tipoPredio || 'Casa');
-        // ... cargar demás campos
+        setDireccion(borrador.direccion || '');
+        setMatricula(borrador.matricula || '');
+        setTipoPredio(borrador.tipoPredio || 'Casa');
+        setPropietario(borrador.propietario || '');
+        setTelefono(borrador.telefono || '');
+        setAreaTerreno(borrador.areaTerreno?.toString() || '');
+        setAreaConstruida(borrador.areaConstruida?.toString() || '');
+        setFrente(borrador.frente?.toString() || '');
+        setFondo(borrador.fondo?.toString() || '');
+        setPisos(borrador.pisos?.toString() || '1');
+        setHabitaciones(borrador.habitaciones?.toString() || '');
+        setBanos(borrador.banos?.toString() || '');
+        setGarajes(borrador.garajes?.toString() || '');
+        setEstadoConservacion(borrador.estadoConservacion || 'Bueno');
+        if (borrador.servicios) {
+          setAgua(borrador.servicios.agua !== false);
+          setLuz(borrador.servicios.luz !== false);
+          setGas(borrador.servicios.gas === true);
+          setAlcantarillado(borrador.servicios.alcantarillado !== false);
+          setInternet(borrador.servicios.internet === true);
+        }
+        setCoordenadas(borrador.coordenadas);
+        setObservaciones(borrador.observaciones || '');
+      } else {
+        console.log('?? No hay borrador guardado');
       }
     } catch (error) {
-      console.log('Error cargando borrador:', error);
-    }
-  };
-
-  const capturarUbicacion = async () => {
-    setLoadingGPS(true);
-    try {
-      const { status } = await Location.requestForegroundPermissionsAsync();
-      if (status !== 'granted') {
-        Alert.alert('Permiso Denegado', 'Se necesita acceso a la ubicación');
-        setLoadingGPS(false);
-        return;
-      }
-
-      const location = await Location.getCurrentPositionAsync({
-        accuracy: Location.Accuracy.High,
-      });
-
-      setCoordenadas({
-        latitude: location.coords.latitude,
-        longitude: location.coords.longitude,
-        accuracy: location.coords.accuracy,
-      });
-
-      Alert.alert(
-        'Ubicación Capturada',
-        `Lat: ${location.coords.latitude.toFixed(6)}\nLng: ${location.coords.longitude.toFixed(6)}\nPrecisión: ${location.coords.accuracy.toFixed(0)}m`
-      );
-    } catch (error) {
-      Alert.alert('Error', 'No se pudo obtener la ubicación');
+      Alert.alert('Error', 'No se pudo guardar el formulario');
       console.error(error);
     } finally {
       setLoadingGPS(false);
@@ -132,9 +133,9 @@ const FormularioCampoScreen = ({ navigation, route }) => {
 
   const getEstadoColor = (estado) => {
     switch (estado) {
-      case 'pendiente': return '#EF4444';
-      case 'en_progreso': return '#F59E0B';
-      case 'completado': return '#10B981';
+      case 'pendiente': return '#BDBDBD';
+      case 'en_progreso': return '#9E9E9E';
+      case 'completado': return '#4F4F4F';
       default: return '#6B7280';
     }
   };
@@ -148,60 +149,85 @@ const FormularioCampoScreen = ({ navigation, route }) => {
     }
   };
 
-  const validarFormulario = () => {
+    const validarFormulario = () => {
     if (!direccion.trim()) {
-      Alert.alert('Campo Requerido', 'La dirección es obligatoria');
+      Alert.alert('Campo Requerido', 'La direcci?n es obligatoria');
       return false;
     }
     if (!matricula.trim()) {
-      Alert.alert('Campo Requerido', 'La matrícula es obligatoria');
+      Alert.alert('Campo Requerido', 'La matr?cula es obligatoria');
       return false;
     }
     if (!coordenadas) {
-      Alert.alert('Ubicación Requerida', 'Debes capturar la ubicación GPS del predio');
+      Alert.alert('Ubicaci?n Requerida', 'Debes capturar la ubicaci?n GPS del predio');
       return false;
     }
     if (!areaTerreno || parseFloat(areaTerreno) <= 0) {
-      Alert.alert('Campo Inválido', 'El área del terreno debe ser mayor a 0');
+      Alert.alert('Campo Inv?lido', 'El ?rea del terreno debe ser mayor a 0');
       return false;
     }
     return true;
   };
 
-  const guardarBorrador = async () => {
+  
+  const capturarUbicacion = async () => {
+    setLoadingGPS(true);
     try {
-      const data = {
-        direccion,
-        matricula,
-        tipoPredio,
-        propietario,
-        telefono,
-        areaTerreno,
-        areaConstruida,
-        frente,
-        fondo,
-        pisos,
-        habitaciones,
-        banos,
-        garajes,
-        estadoConservacion,
-        agua,
-        luz,
-        gas,
-        alcantarillado,
-        internet,
-        coordenadas,
-        observaciones,
-        fechaActualizacion: new Date().toISOString(),
-      };
-
-      await AsyncStorage.setItem(`formulario_${asignacionId}`, JSON.stringify(data));
-      Alert.alert('Borrador Guardado', 'Puedes continuar más tarde');
+      const { status } = await Location.requestForegroundPermissionsAsync();
+      if (status !== 'granted') {
+        Alert.alert('Permiso Denegado', 'Se necesita acceso a la ubicaciÃƒÂ³n');
+        setLoadingGPS(false);
+        return;
+      }
+      const location = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.High });
+      setCoordenadas({
+        latitude: location.coords.latitude,
+        longitude: location.coords.longitude,
+        accuracy: location.coords.accuracy,
+      });
+      
+      const _msg = 'Lat: ' + location.coords.latitude.toFixed(6) + '\nLng: ' + location.coords.longitude.toFixed(6) + '\nPrecisión: ' + Math.round(location.coords.accuracy) + 'm';
+      Alert.alert('UbicaciÃƒÂ³n Capturada', _msg);
     } catch (error) {
-      Alert.alert('Error', 'No se pudo guardar el borrador');
+      Alert.alert('Error', 'No se pudo obtener la ubicaciÃƒÂ³n');
       console.error(error);
+    } finally {
+      setLoadingGPS(false);
     }
-  };
+  };const guardarBorrador = async () => {
+  try {
+    const data = {
+      asignacionId,
+      peritoId,
+      direccion,
+      matricula,
+      tipoPredio,
+      propietario,
+      telefono,
+      areaTerreno: parseFloat(areaTerreno) || 0,
+      areaConstruida: parseFloat(areaConstruida) || 0,
+      frente: parseFloat(frente) || 0,
+      fondo: parseFloat(fondo) || 0,
+      pisos: parseInt(pisos) || 1,
+      habitaciones: parseInt(habitaciones) || 0,
+      banos: parseInt(banos) || 0,
+      garajes: parseInt(garajes) || 0,
+      estadoConservacion,
+      servicios: { agua, luz, gas, alcantarillado, internet },
+      coordenadas,
+      observaciones,
+    };
+    const success = await DatabaseService.saveBorrador(data);
+    if (success) {
+      Alert.alert('Borrador guardado', 'Se guardÃƒÂ³ el borrador en el dispositivo');
+    } else {
+      Alert.alert('Error', 'No se pudo guardar el borrador');
+    }
+  } catch (error) {
+    Alert.alert('Error', 'No se pudo guardar el borrador');
+    console.error(error);
+  }
+};
 
   const guardarFormulario = async () => {
     if (!validarFormulario()) return;
@@ -212,13 +238,13 @@ const FormularioCampoScreen = ({ navigation, route }) => {
         id: `FORM_${Date.now()}`,
         asignacionId,
         peritoId,
-        // Información General
+        // InformaciÃƒÂ³n General
         direccion,
         matricula,
         tipoPredio,
         propietario,
         telefono,
-        // Características Físicas
+        // CaracterÃƒÂ­sticas FÃƒÂ­sicas
         areaTerreno: parseFloat(areaTerreno),
         areaConstruida: parseFloat(areaConstruida) || 0,
         frente: parseFloat(frente) || 0,
@@ -228,7 +254,7 @@ const FormularioCampoScreen = ({ navigation, route }) => {
         banos: parseInt(banos) || 0,
         garajes: parseInt(garajes) || 0,
         estadoConservacion,
-        // Servicios Públicos
+        // Servicios PÃƒÂºblicos
         servicios: {
           agua,
           luz,
@@ -236,7 +262,7 @@ const FormularioCampoScreen = ({ navigation, route }) => {
           alcantarillado,
           internet,
         },
-        // Ubicación
+        // UbicaciÃƒÂ³n
         coordenadas,
         // Observaciones
         observaciones,
@@ -245,17 +271,23 @@ const FormularioCampoScreen = ({ navigation, route }) => {
         estado: 'completado',
       };
 
-      // Guardar en Firebase y actualizar estado del caso
-      console.log('💾 Guardando formulario en Firebase...');
-      const exitoFirebase = await CasosService.guardarFormularioCampo(formulario);
-
-      if (exitoFirebase) {
-        console.log('✅ Formulario guardado en Firebase');
-      } else {
-        console.log('⚠️ Formulario guardado localmente, se sincronizará después');
+      // Guardar en OneDrive/SQL vÃƒÂ­a backend
+      if (!casoIdBackend) {
+        throw new Error('No hay casoId disponible para subir el formulario');
       }
 
-      // Guardar también en AsyncStorage local como respaldo
+      const coords = coordenadas
+        ? { latitud: coordenadas.latitude, longitud: coordenadas.longitude }
+        : null;
+
+      console.log('?? Subiendo formulario a OneDrive/SQL...');
+      
+      const resultado = await ApiService.uploadFormulario(casoIdBackend, codigoCaso, formulario, coords);
+      const oneDriveUrl = resultado?.formulario?.onedriveUrl;
+      const warning = resultado?.warning;
+      console.log('? Formulario subido:', resultado?.formulario?.id);
+
+      // Guardar tambiÃƒÂ©n en AsyncStorage local como respaldo
       const formularios = await AsyncStorage.getItem('formularios_campo');
       const lista = formularios ? JSON.parse(formularios) : [];
       lista.push(formulario);
@@ -264,22 +296,28 @@ const FormularioCampoScreen = ({ navigation, route }) => {
       // Eliminar borrador
       await AsyncStorage.removeItem(`formulario_${asignacionId}`);
 
-      Alert.alert(
-        'Formulario Guardado',
-        exitoFirebase
-          ? '✅ Formulario guardado y sincronizado con Firebase'
-          : '✅ Formulario guardado localmente. Se sincronizará cuando haya conexión.',
-        [
-          {
-            text: 'Ver Fotos',
-            onPress: () => navigation.navigate('PhotoManager'),
-          },
-          {
-            text: 'Volver a Inicio',
-            onPress: () => navigation.navigate('Home'),
-          },
-        ]
+      // Mostrar Toast no bloqueante en Android con la URL
+      if (Platform.OS === 'android' && oneDriveUrl) {
+        try { ToastAndroid.show(`OneDrive: ${oneDriveUrl}`, ToastAndroid.LONG); } catch {}
+      }
+
+      // Mostrar alerta con opci?n para abrir la URL en OneDrive
+      const buttons = [];
+      if (oneDriveUrl) {
+        buttons.push({ text: 'Abrir OneDrive', onPress: () => Linking.openURL(oneDriveUrl) });
+      }
+      buttons.push(
+        { text: 'Ver Fotos', onPress: () => navigation.navigate('PhotoManager') },
+        { text: 'Volver a Inicio', onPress: () => navigation.navigate('Home') }
       );
+
+      const message = oneDriveUrl
+        ? `Guardado en OneDrive\n\n${oneDriveUrl}`
+        : warning
+          ? 'Guardado en base de datos. No se pudo subir a OneDrive.'
+          : 'Formulario guardado en OneDrive';
+
+      Alert.alert('Formulario Guardado', message, buttons);
     } catch (error) {
       Alert.alert('Error', 'No se pudo guardar el formulario');
       console.error(error);
@@ -349,7 +387,7 @@ const FormularioCampoScreen = ({ navigation, route }) => {
       {/* Header */}
       <View style={styles.header}>
         <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
-          <Text style={styles.backText}>← Atrás</Text>
+          <Text style={styles.backText}>? AtrÃƒÂ¡s</Text>
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Diligenciamiento en Campo</Text>
         <TouchableOpacity onPress={guardarBorrador} style={styles.draftButton}>
@@ -358,7 +396,7 @@ const FormularioCampoScreen = ({ navigation, route }) => {
       </View>
 
       <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
-        {/* Información de la Asignación */}
+        {/* InformaciÃƒÂ³n de la AsignaciÃƒÂ³n */}
         {asignacionData && (
           <View style={styles.asignacionInfo}>
             <View style={styles.asignacionHeader}>
@@ -372,19 +410,19 @@ const FormularioCampoScreen = ({ navigation, route }) => {
           </View>
         )}
 
-        {/* Información General */}
+        {/* InformaciÃƒÂ³n General */}
         <View style={styles.seccion}>
-          <SeccionHeader icon={<Home size={20} color="#1D4ED8" />} titulo="Información General" />
+          <SeccionHeader icon={<Home size={20} color="#6B7280" />} titulo="InformaciÃƒÂ³n General" />
 
           <Campo
-            label="Dirección *"
+            label="DirecciÃƒÂ³n *"
             value={direccion}
             onChangeText={setDireccion}
             placeholder="Ej: Calle 123 #45-67"
           />
 
           <Campo
-            label="Matrícula Inmobiliaria *"
+            label="MatrÃƒÂ­cula Inmobiliaria *"
             value={matricula}
             onChangeText={setMatricula}
             placeholder="Ej: 50N-12345678"
@@ -405,7 +443,7 @@ const FormularioCampoScreen = ({ navigation, route }) => {
           />
 
           <Campo
-            label="Teléfono de Contacto"
+            label="TelÃƒÂ©fono de Contacto"
             value={telefono}
             onChangeText={setTelefono}
             placeholder="300 123 4567"
@@ -413,14 +451,14 @@ const FormularioCampoScreen = ({ navigation, route }) => {
           />
         </View>
 
-        {/* Características Físicas */}
+        {/* CaracterÃƒÂ­sticas FÃƒÂ­sicas */}
         <View style={styles.seccion}>
-          <SeccionHeader icon={<Ruler size={20} color="#10B981" />} titulo="Características Físicas" />
+          <SeccionHeader icon={<Ruler size={20} color="#6B7280" />} titulo="CaracterÃƒÂ­sticas FÃƒÂ­sicas" />
 
           <View style={styles.row}>
             <View style={styles.halfColumn}>
               <Campo
-                label="Área Terreno (m²) *"
+                label="ÃƒÂrea Terreno (mÃ‚Â²) *"
                 value={areaTerreno}
                 onChangeText={setAreaTerreno}
                 placeholder="0.00"
@@ -429,7 +467,7 @@ const FormularioCampoScreen = ({ navigation, route }) => {
             </View>
             <View style={styles.halfColumn}>
               <Campo
-                label="Área Construida (m²)"
+                label="ÃƒÂrea Construida (mÃ‚Â²)"
                 value={areaConstruida}
                 onChangeText={setAreaConstruida}
                 placeholder="0.00"
@@ -480,7 +518,7 @@ const FormularioCampoScreen = ({ navigation, route }) => {
             </View>
             <View style={styles.quarterColumn}>
               <Campo
-                label="Baños"
+                label="BaÃƒÂ±os"
                 value={banos}
                 onChangeText={setBanos}
                 placeholder="0"
@@ -499,16 +537,16 @@ const FormularioCampoScreen = ({ navigation, route }) => {
           </View>
 
           <Selector
-            label="Estado de Conservación"
+            label="Estado de ConservaciÃƒÂ³n"
             value={estadoConservacion}
             opciones={['Excelente', 'Bueno', 'Regular', 'Malo']}
             onSelect={setEstadoConservacion}
           />
         </View>
 
-        {/* Servicios Públicos */}
+        {/* Servicios PÃƒÂºblicos */}
         <View style={styles.seccion}>
-          <SeccionHeader icon={<Droplet size={20} color="#3B82F6" />} titulo="Servicios Públicos" />
+          <SeccionHeader icon={<Droplet size={20} color="#6B7280" />} titulo="Servicios PÃƒÂºblicos" />
 
           <ServicioSwitch
             label="Agua Potable"
@@ -517,7 +555,7 @@ const FormularioCampoScreen = ({ navigation, route }) => {
             icon={<Droplet size={16} color="#3B82F6" />}
           />
           <ServicioSwitch
-            label="Energía Eléctrica"
+            label="EnergÃƒÂ­a ElÃƒÂ©ctrica"
             value={luz}
             onValueChange={setLuz}
             icon={<Zap size={16} color="#F59E0B" />}
@@ -542,19 +580,19 @@ const FormularioCampoScreen = ({ navigation, route }) => {
           />
         </View>
 
-        {/* Ubicación GPS */}
+        {/* UbicaciÃƒÂ³n GPS */}
         <View style={styles.seccion}>
-          <SeccionHeader icon={<MapPin size={20} color="#EF4444" />} titulo="Ubicación GPS" />
+          <SeccionHeader icon={<MapPin size={20} color="#6B7280" />} titulo="UbicaciÃƒÂ³n GPS" />
 
           {coordenadas ? (
             <View style={styles.coordenadasContainer}>
-              <Text style={styles.coordenadasLabel}>Ubicación Capturada:</Text>
+              <Text style={styles.coordenadasLabel}>UbicaciÃƒÂ³n Capturada:</Text>
               <Text style={styles.coordenadasTexto}>Latitud: {coordenadas.latitude.toFixed(6)}</Text>
               <Text style={styles.coordenadasTexto}>Longitud: {coordenadas.longitude.toFixed(6)}</Text>
-              <Text style={styles.coordenadasTexto}>Precisión: {coordenadas.accuracy?.toFixed(0)}m</Text>
+              <Text style={styles.coordenadasTexto}>PrecisiÃƒÂ³n: {coordenadas.accuracy?.toFixed(0)}m</Text>
               <TouchableOpacity style={styles.recapturarButton} onPress={capturarUbicacion}>
                 <Navigation size={16} color="#1D4ED8" />
-                <Text style={styles.recapturarTexto}>Recapturar Ubicación</Text>
+                <Text style={styles.recapturarTexto}>Recapturar UbicaciÃƒÂ³n</Text>
               </TouchableOpacity>
             </View>
           ) : (
@@ -565,19 +603,19 @@ const FormularioCampoScreen = ({ navigation, route }) => {
             >
               <MapPin size={24} color="#FFFFFF" />
               <Text style={styles.gpsButtonText}>
-                {loadingGPS ? 'Obteniendo Ubicación...' : 'Capturar Ubicación GPS'}
+                {loadingGPS ? 'Obteniendo UbicaciÃƒÂ³n...' : 'Capturar UbicaciÃƒÂ³n GPS'}
               </Text>
             </TouchableOpacity>
           )}
         </View>
 
-        {/* Evidencias Fotográficas */}
+        {/* Evidencias FotogrÃƒÂ¡ficas */}
         <View style={styles.seccion}>
-          <SeccionHeader icon={<Camera size={20} color="#8B5CF6" />} titulo="Evidencias Fotográficas" />
+          <SeccionHeader icon={<Camera size={20} color="#6B7280" />} titulo="Evidencias FotogrÃƒÂ¡ficas" />
 
           <TouchableOpacity style={styles.cameraButton} onPress={tomarFotografia}>
             <Camera size={24} color="#FFFFFF" />
-            <Text style={styles.cameraButtonText}>Tomar Fotografías</Text>
+            <Text style={styles.cameraButtonText}>Tomar FotografÃƒÂ­as</Text>
           </TouchableOpacity>
         </View>
 
@@ -592,7 +630,7 @@ const FormularioCampoScreen = ({ navigation, route }) => {
           />
         </View>
 
-        {/* Botón Guardar */}
+        {/* BotÃƒÂ³n Guardar */}
         <View style={styles.seccion}>
           <TouchableOpacity
             style={[styles.guardarButton, saving && styles.guardarButtonDisabled]}
@@ -618,7 +656,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#F8FAFC',
   },
   header: {
-    backgroundColor: '#1D4ED8',
+    backgroundColor: COLORS.primary,
     paddingTop: Platform.OS === 'ios' ? 50 : 40,
     paddingBottom: 15,
     paddingHorizontal: 20,
@@ -650,13 +688,13 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   asignacionInfo: {
-    backgroundColor: '#EFF6FF',
+    backgroundColor: '#F5F7F0',
     marginTop: 12,
     marginHorizontal: 16,
     padding: 16,
     borderRadius: 12,
     borderLeftWidth: 4,
-    borderLeftColor: '#1D4ED8',
+    borderLeftColor: COLORS.primary,
   },
   asignacionHeader: {
     flexDirection: 'row',
@@ -751,8 +789,8 @@ const styles = StyleSheet.create({
     backgroundColor: '#FFFFFF',
   },
   selectorBotonActivo: {
-    backgroundColor: '#1D4ED8',
-    borderColor: '#1D4ED8',
+    backgroundColor: COLORS.primary,
+    borderColor: COLORS.primary,
   },
   selectorTexto: {
     fontSize: 14,
@@ -833,7 +871,7 @@ const styles = StyleSheet.create({
     gap: 6,
   },
   recapturarTexto: {
-    color: '#1D4ED8',
+    color: COLORS.primary,
     fontSize: 14,
     fontWeight: '600',
   },
@@ -871,3 +909,33 @@ const styles = StyleSheet.create({
 });
 
 export default FormularioCampoScreen;
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

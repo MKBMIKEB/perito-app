@@ -248,17 +248,30 @@ class SQLService {
   async registrarArchivo(archivoData) {
     try {
       const pool = await this.connect();
+      // Sanitizar longitudes para ajustarse al esquema actual
+      const limit = (val, max) => {
+        if (val === null || val === undefined) return null;
+        const str = String(val);
+        return str.length > max ? str.slice(0, max) : str;
+      };
+      const nombreArchivo = limit(archivoData.nombreArchivo, 500);
+      const mimeType = limit(archivoData.mimeType, 100);
+      const onedriveFileId = limit(archivoData.onedriveFileId, 200);
+      const onedriveUrl = limit(archivoData.onedriveUrl, 1000);
+      const onedriveUrlDescarga = limit(archivoData.onedriveUrlDescarga, 1000);
+      const rutaOnedrive = limit(archivoData.rutaOnedrive, 1000);
+
       const result = await pool.request()
         .input('casoId', sql.Int, archivoData.casoId)
         .input('codigoCaso', sql.VarChar(50), archivoData.codigoCaso)
-        .input('nombreArchivo', sql.VarChar(500), archivoData.nombreArchivo)
+        .input('nombreArchivo', sql.VarChar(500), nombreArchivo)
         .input('tipoArchivo', sql.VarChar(50), archivoData.tipoArchivo)
         .input('tamañoBytes', sql.BigInt, archivoData.tamañoBytes)
-        .input('mimeType', sql.VarChar(100), archivoData.mimeType)
-        .input('onedriveFileId', sql.VarChar(200), archivoData.onedriveFileId)
-        .input('onedriveUrl', sql.VarChar(1000), archivoData.onedriveUrl)
-        .input('onedriveUrlDescarga', sql.VarChar(1000), archivoData.onedriveUrlDescarga)
-        .input('rutaOnedrive', sql.VarChar(1000), archivoData.rutaOnedrive)
+        .input('mimeType', sql.VarChar(100), mimeType)
+        .input('onedriveFileId', sql.VarChar(200), onedriveFileId)
+        .input('onedriveUrl', sql.VarChar(1000), onedriveUrl)
+        .input('onedriveUrlDescarga', sql.VarChar(1000), onedriveUrlDescarga)
+        .input('rutaOnedrive', sql.VarChar(1000), rutaOnedrive)
         .input('usuarioId', sql.VarChar(100), archivoData.usuarioId)
         .input('usuarioNombre', sql.VarChar(200), archivoData.usuarioNombre)
         .input('latitud', sql.Decimal(10, 8), archivoData.latitud || null)
@@ -364,6 +377,102 @@ class SQLService {
     } catch (error) {
       console.error('❌ Error obteniendo formularios:', error.message);
       throw new DatabaseError('Error obteniendo formularios', error);
+    }
+  }
+
+  // ========== GESTIÓN DE USUARIOS ==========
+
+  /**
+   * Busca un usuario por email
+   */
+  async buscarUsuarioPorEmail(email) {
+    try {
+      const pool = await this.connect();
+      const result = await pool.request()
+        .input('email', sql.VarChar(255), email)
+        .query('SELECT * FROM Usuarios WHERE email = @email');
+
+      if (result.recordset.length > 0) {
+        console.log(`✅ Usuario encontrado: ${email}`);
+        return result.recordset[0];
+      }
+
+      console.log(`⚠️  Usuario no encontrado: ${email}`);
+      return null;
+    } catch (error) {
+      console.error('❌ Error buscando usuario:', error.message);
+      throw new DatabaseError('Error buscando usuario', error);
+    }
+  }
+
+  /**
+   * Crea un nuevo usuario
+   */
+  async crearUsuario(userData) {
+    try {
+      const pool = await this.connect();
+      const result = await pool.request()
+        .input('email', sql.VarChar(255), userData.email)
+        .input('nombre', sql.VarChar(255), userData.nombre)
+        .input('rol', sql.VarChar(50), userData.rol || 'Perito')
+        .query(`
+          INSERT INTO Usuarios (email, nombre, rol)
+          OUTPUT INSERTED.*
+          VALUES (@email, @nombre, @rol)
+        `);
+
+      const usuario = result.recordset[0];
+      console.log(`✅ Usuario creado: ${usuario.nombre} (ID: ${usuario.id})`);
+      return usuario;
+    } catch (error) {
+      console.error('❌ Error creando usuario:', error.message);
+      throw new DatabaseError('Error creando usuario', error);
+    }
+  }
+
+  /**
+   * Actualiza información de un usuario
+   */
+  async actualizarUsuario(usuarioId, updates) {
+    try {
+      const pool = await this.connect();
+      const campos = [];
+      const request = pool.request().input('id', sql.Int, usuarioId);
+
+      if (updates.nombre !== undefined) {
+        campos.push('nombre = @nombre');
+        request.input('nombre', sql.VarChar(255), updates.nombre);
+      }
+
+      if (updates.rol !== undefined) {
+        campos.push('rol = @rol');
+        request.input('rol', sql.VarChar(50), updates.rol);
+      }
+
+      if (updates.activo !== undefined) {
+        campos.push('activo = @activo');
+        request.input('activo', sql.Bit, updates.activo);
+      }
+
+      if (campos.length === 0) {
+        console.log('⚠️  No hay campos para actualizar');
+        return null;
+      }
+
+      campos.push('fechaActualizacion = GETDATE()');
+
+      const query = `
+        UPDATE Usuarios
+        SET ${campos.join(', ')}
+        WHERE id = @id
+      `;
+
+      await request.query(query);
+      console.log(`✅ Usuario actualizado: ${usuarioId}`);
+      return true;
+    } catch (error) {
+      console.error('❌ Error actualizando usuario:', error.message);
+      throw new DatabaseError('Error actualizando usuario', error);
     }
   }
 

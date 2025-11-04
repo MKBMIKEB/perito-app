@@ -5,13 +5,14 @@
     "version": "1.1.0",
     "owner": "mkb_r",
     "projectId": "perito-app-mkb-r",
+    "scheme": "perito-app",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
     "splash": {
       "image": "./assets/splash.png",
       "resizeMode": "contain",
-      "backgroundColor": "#1D4ED8"
+      "backgroundColor": "#FFFFFF"
     },
     "assetBundlePatterns": [
       "**/*"
@@ -28,7 +29,7 @@
       "googleServicesFile": "./google-services.json",
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
-        "backgroundColor": "#1D4ED8"
+        "backgroundColor": "#FFFFFF"
       },
       "compileSdkVersion": 34,
       "targetSdkVersion": 33,
@@ -50,10 +51,7 @@
       "favicon": "./assets/favicon.png"
     },
     "plugins": [
-      "expo-location",
-      "expo-camera",
-      "expo-notifications",
-      "./app.plugin.js"
+      "expo-sqlite"
     ],
     "extra": {
       "eas": {

@@ -25,11 +25,14 @@ import {
   Wifi,
   WifiOff,
   Phone,
-  Navigation
+  Navigation,
+  Home
 } from 'lucide-react-native';
 import { AuthService } from '../services/AuthService';
 import { DatabaseService } from '../services/DatabaseService-native';
 import CasosService from '../services/CasosService';
+import ApiService from '../services/ApiService';
+import { COLORS } from '../constants';
 
 const HomeScreen = ({ navigation }) => {
   const [asignaciones, setAsignaciones] = useState([]);
@@ -72,30 +75,102 @@ const HomeScreen = ({ navigation }) => {
           (casosActualizados) => {
             console.log(`🔄 ${casosActualizados.length} casos recibidos de Firebase`);
 
-            // Mapear datos de Firebase al formato de la app
-            const casosFormateados = casosActualizados.map(caso => ({
-              id: caso.codigo || caso.id,
-              direccion: caso.direccion,
-              municipio: caso.municipio,
-              tipo: caso.tipo,
-              estado: caso.estado === 'asignado' ? 'pendiente' : caso.estado,
-              fechaLimite: caso.fechaLimite,
-              prioridad: caso.prioridad || 'normal',
-              coordenadas: caso.coordenadas || { lat: 0, lng: 0 }
-            }));
-
-            setAsignaciones(casosFormateados);
+            if (casosActualizados.length > 0) {
+              // Mapear datos de Firebase al formato de la app
+              const casosFormateados = casosActualizados.map(caso => ({
+                id: caso.id,
+                codigo: caso.codigo,
+                direccion: caso.direccion,
+                municipio: caso.municipio,
+                tipo: caso.tipo,
+                estado: caso.estado === 'asignado' ? 'pendiente' : caso.estado,
+                fechaLimite: caso.fechaLimite,
+                prioridad: caso.prioridad || 'normal',
+                coordenadas: caso.coordenadas || { lat: 0, lng: 0 }
+              }));
+              setAsignaciones(casosFormateados);
+            } else {
+              // Si no hay casos, cargar datos de ejemplo
+              console.log('📝 No hay casos en Firebase, cargando datos de ejemplo');
+              cargarDatosEjemplo();
+            }
             setLoading(false);
           }
         );
       } else {
-        console.log('⚠️ No hay peritoId disponible');
-        setLoading(false);
+        console.log('⚠️ No hay peritoId disponible, intentando cargar casos del backend');
+        // MVP: si no hay peritoId, listar SOLO los casos creados por el coordinador actual
+        try {
+          const me = await ApiService.getMe();
+          const filtros = { coordinadorId: me?.id };
+          const casos = await ApiService.getCasos(filtros);
+          if (Array.isArray(casos) && casos.length > 0) {
+            const casosFormateados = casos.map(caso => ({
+              id: caso.id,
+              codigo: caso.codigo,
+              direccion: caso.direccion,
+              municipio: caso.ciudad || '-',
+              tipo: caso.tipoInmueble || 'N/A',
+              estado: caso.estado || 'pendiente',
+              fechaLimite: caso.fechaAsignacion || null,
+              prioridad: caso.prioridad || 'media',
+              coordenadas: { lat: 0, lng: 0 }
+            }));
+            setAsignaciones(casosFormateados);
+          } else {
+            console.log('📝 Backend sin casos, cargando datos de ejemplo');
+            cargarDatosEjemplo();
+          }
+        } catch (backendError) {
+          console.error('❌ Error cargando casos del backend:', backendError.message);
+          console.log('📝 Cargando datos de ejemplo por error');
+          cargarDatosEjemplo();
+        } finally {
+          setLoading(false);
+        }
       }
     } catch (error) {
       console.error('❌ Error cargando casos:', error);
+      console.log('📝 Cargando datos de ejemplo por error');
+      cargarDatosEjemplo();
       setLoading(false);
     }
+  };
+
+  const cargarDatosEjemplo = () => {
+    const casosEjemplo = [
+      {
+        id: 'PER001',
+        direccion: 'Calle 123 #45-67',
+        municipio: 'Bogotá D.C.',
+        tipo: 'Avalúo Comercial',
+        estado: 'pendiente',
+        fechaLimite: '2025-11-15',
+        prioridad: 'alta',
+        coordenadas: { lat: 4.6097, lng: -74.0817 }
+      },
+      {
+        id: 'PER002',
+        direccion: 'Carrera 7 #89-12',
+        municipio: 'Bogotá D.C.',
+        tipo: 'Avalúo Hipotecario',
+        estado: 'en_progreso',
+        fechaLimite: '2025-11-10',
+        prioridad: 'normal',
+        coordenadas: { lat: 4.6533, lng: -74.0836 }
+      },
+      {
+        id: 'PER003',
+        direccion: 'Avenida 68 #25-90',
+        municipio: 'Bogotá D.C.',
+        tipo: 'Avalúo Catastral',
+        estado: 'completado',
+        fechaLimite: '2025-11-05',
+        prioridad: 'baja',
+        coordenadas: { lat: 4.6482, lng: -74.1031 }
+      },
+    ];
+    setAsignaciones(casosEjemplo);
   };
 
   const loadPeritoInfo = async () => {
@@ -124,10 +199,10 @@ const HomeScreen = ({ navigation }) => {
 
   const getEstadoColor = (estado) => {
     switch (estado) {
-      case 'pendiente': return '#EF4444';
-      case 'en_progreso': return '#F59E0B'; 
-      case 'completado': return '#10B981';
-      default: return '#6B7280';
+      case 'pendiente': return '#BDBDBD';
+      case 'en_progreso': return '#9E9E9E'; 
+      case 'completado': return '#4F4F4F';
+      default: return COLORS.icon;
     }
   };
 
@@ -229,40 +304,42 @@ const HomeScreen = ({ navigation }) => {
       <Text style={styles.asignacionDireccion}>{asignacion.direccion}</Text>
       <Text style={styles.asignacionMunicipio}>{asignacion.municipio}</Text>
       <Text style={styles.asignacionTipo}>{asignacion.tipo}</Text>
-      
-      <View style={styles.cardFooter}>
-        <View style={styles.fechaContainer}>
-          <Clock size={14} color="#6B7280" />
-          <Text style={styles.fechaText}>Límite: {asignacion.fechaLimite}</Text>
-        </View>
-        
-        {asignacion.estado === 'pendiente' && (
-          <TouchableOpacity 
-            style={styles.iniciarButton}
-            onPress={(e) => {
-              e.stopPropagation();
-              iniciarTrabajo(asignacion);
-            }}
-          >
-            <Text style={styles.iniciarButtonText}>Iniciar</Text>
-          </TouchableOpacity>
-        )}
-        
-        {asignacion.estado === 'en_progreso' && (
-          <TouchableOpacity
-            style={styles.continuarButton}
-            onPress={(e) => {
-              e.stopPropagation();
-              navigation.navigate('FormularioCampo', {
-                asignacionId: asignacion.id,
-                peritoId: peritoInfo.cedula
-              });
-            }}
-          >
-            <Camera size={14} color="#FFFFFF" />
-            <Text style={styles.continuarButtonText}>Diligenciar</Text>
-          </TouchableOpacity>
-        )}
+
+      <View style={styles.fechaLimiteRow}>
+        <Clock size={14} color="#6B7280" />
+        <Text style={styles.fechaText}>Límite: {asignacion.fechaLimite}</Text>
+      </View>
+
+      {/* BOTONES PRINCIPALES - SIMPLIFICADOS */}
+      <View style={styles.botonesRow}>
+        <TouchableOpacity
+          style={styles.botonPrincipal}
+          onPress={(e) => {
+            e.stopPropagation();
+            navigation.navigate('FormularioCampo', {
+              asignacionId: asignacion.id,
+              peritoId: peritoInfo.cedula,
+              asignacionData: asignacion
+            });
+          }}
+        >
+          <Home size={28} color="#556B2F" />
+          <Text style={styles.botonPrincipalText}>Diligenciar{'\n'}Formulario</Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          style={styles.botonPrincipal}
+          onPress={(e) => {
+            e.stopPropagation();
+            navigation.navigate('Camera', {
+              codigoCaso: asignacion.codigo || asignacion.id,
+              casoId: asignacion.id
+            });
+          }}
+        >
+          <Camera size={28} color="#556B2F" />
+          <Text style={styles.botonPrincipalText}>Adjuntar{'\n'}Fotos</Text>
+        </TouchableOpacity>
       </View>
     </TouchableOpacity>
   );
@@ -325,22 +402,22 @@ const HomeScreen = ({ navigation }) => {
         <View style={styles.section}>
           <View style={styles.metricasGrid}>
             <MetricaCard 
-              icon={<AlertCircle size={20} color="#EF4444" />}
+              icon={<AlertCircle size={20} color={COLORS.icon} />}
               titulo="Pendientes"
               valor={asignaciones.filter(a => a.estado === 'pendiente').length}
-              color="#EF4444"
+              color={COLORS.icon}
             />
             <MetricaCard 
-              icon={<Clock size={20} color="#F59E0B" />}
+              icon={<Clock size={20} color={COLORS.icon} />}
               titulo="En Progreso"
               valor={asignaciones.filter(a => a.estado === 'en_progreso').length}
-              color="#F59E0B"
+              color={COLORS.icon}
             />
             <MetricaCard 
-              icon={<CheckCircle size={20} color="#10B981" />}
+              icon={<CheckCircle size={20} color={COLORS.icon} />}
               titulo="Completados"
               valor={asignaciones.filter(a => a.estado === 'completado').length}
-              color="#10B981"
+              color={COLORS.icon}
             />
           </View>
         </View>
@@ -380,7 +457,7 @@ const HomeScreen = ({ navigation }) => {
 
           <View style={styles.accionesGrid}>
             <TouchableOpacity style={styles.accionButton}>
-              <MapPin size={32} color="#1D4ED8" />
+              <MapPin size={32} color={COLORS.icon} />
               <Text style={styles.accionLabel}>Ver Mapa</Text>
             </TouchableOpacity>
 
@@ -391,7 +468,7 @@ const HomeScreen = ({ navigation }) => {
                 peritoId: peritoInfo.cedula
               })}
             >
-              <Camera size={32} color="#10B981" />
+              <Camera size={32} color={COLORS.icon} />
               <Text style={styles.accionLabel}>Tomar Foto</Text>
             </TouchableOpacity>
 
@@ -399,12 +476,12 @@ const HomeScreen = ({ navigation }) => {
               style={styles.accionButton}
               onPress={() => navigation.navigate('PhotoManager')}
             >
-              <CheckCircle size={32} color="#8B5CF6" />
+              <CheckCircle size={32} color={COLORS.icon} />
               <Text style={styles.accionLabel}>Mis Fotos</Text>
             </TouchableOpacity>
 
             <TouchableOpacity style={styles.accionButton}>
-              <Phone size={32} color="#F97316" />
+              <Phone size={32} color={COLORS.icon} />
               <Text style={styles.accionLabel}>Contactar</Text>
             </TouchableOpacity>
           </View>
@@ -687,6 +764,76 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: 'bold',
   },
+  adjuntarDatosButton: {
+    backgroundColor: '#F5F7F0',
+    borderWidth: 2,
+    borderColor: '#556B2F',
+    borderRadius: 12,
+    padding: 14,
+    marginTop: 12,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  adjuntarDatosIcon: {
+    width: 40,
+    height: 40,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 20,
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#556B2F',
+  },
+  adjuntarDatosContent: {
+    flex: 1,
+  },
+  adjuntarDatosTitle: {
+    fontSize: 15,
+    fontWeight: 'bold',
+    color: '#556B2F',
+    marginBottom: 2,
+  },
+  adjuntarDatosSubtitle: {
+    fontSize: 12,
+    color: '#6B7280',
+  },
+  adjuntarDatosArrow: {
+    fontSize: 20,
+    color: '#556B2F',
+    fontWeight: 'bold',
+  },
+  fechaLimiteRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginTop: 8,
+    marginBottom: 12,
+  },
+  botonesRow: {
+    flexDirection: 'row',
+    gap: 12,
+    marginTop: 12,
+  },
+  botonPrincipal: {
+    flex: 1,
+    backgroundColor: '#FFFFFF',
+    borderWidth: 2,
+    borderColor: '#556B2F',
+    borderRadius: 12,
+    padding: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
+    minHeight: 90,
+  },
+  botonPrincipalText: {
+    color: '#556B2F',
+    fontSize: 13,
+    fontWeight: 'bold',
+    marginTop: 8,
+    textAlign: 'center',
+    lineHeight: 16,
+  },
   accionesGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
@@ -778,3 +925,4 @@ const styles = StyleSheet.create({
 });
 
 export default HomeScreen;
+

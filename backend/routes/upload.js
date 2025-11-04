@@ -16,6 +16,21 @@ router.post('/foto', async (req, res, next) => {
   try {
     const { casoId, codigoCaso, tipoFoto, nombreArchivo, fotoBase64, coordenadas } = req.body;
 
+    const logCtx = {
+      usuario: req.user?.email,
+      userId: req.user?.id,
+      casoId,
+      codigoCaso,
+      tipoFoto,
+    };
+    const t0 = Date.now();
+    console.log('📥 [UPLOAD/FOTO] Solicitud recibida', {
+      ...logCtx,
+      base64Provided: Boolean(fotoBase64),
+      base64Length: fotoBase64 ? fotoBase64.length : 0,
+      coords: coordenadas ? { lat: coordenadas.latitud, lng: coordenadas.longitud } : null,
+    });
+
     // Validaciones
     if (!casoId || !codigoCaso || !fotoBase64) {
       throw new ValidationError('casoId, codigoCaso y fotoBase64 son requeridos');
@@ -30,13 +45,20 @@ router.post('/foto', async (req, res, next) => {
     // Convertir base64 a buffer
     const base64Data = fotoBase64.replace(/^data:image\/\w+;base64,/, '');
     const buffer = Buffer.from(base64Data, 'base64');
+    console.log('📏 [UPLOAD/FOTO] Tamaño buffer (bytes):', buffer.length);
 
     // Generar nombre de archivo si no se proporciona
     const timestamp = Date.now();
     const extension = fotoBase64.match(/data:image\/(\w+);base64/)?.[1] || 'jpg';
     const fileName = nombreArchivo || `${tipoFoto || 'foto'}_${timestamp}.${extension}`;
+    console.log('📝 [UPLOAD/FOTO] Archivo a subir:', {
+      fileName,
+      extension,
+      ruta: `DatosPeritos/${codigoCaso}/Fotos/${fileName}`,
+    });
 
     // Subir a OneDrive
+    const uploadStart = Date.now();
     const uploadResult = await onedriveService.subirArchivo(
       req.user.token,
       codigoCaso,
@@ -44,6 +66,11 @@ router.post('/foto', async (req, res, next) => {
       fileName,
       buffer
     );
+    console.log('✅ [UPLOAD/FOTO] Subida OneDrive OK', {
+      driveItemId: uploadResult?.id,
+      webUrl: uploadResult?.webUrl,
+      msDurationMs: Date.now() - uploadStart,
+    });
 
     // Registrar en base de datos
     const archivoData = {
@@ -63,7 +90,13 @@ router.post('/foto', async (req, res, next) => {
       longitud: coordenadas?.longitud || null
     };
 
+    const regStart = Date.now();
     const archivo = await sqlService.registrarArchivo(archivoData);
+    console.log('✅ [UPLOAD/FOTO] Registro SQL OK', {
+      archivoId: archivo?.id,
+      sqlDurationMs: Date.now() - regStart,
+      totalDurationMs: Date.now() - t0,
+    });
 
     res.status(201).json({
       success: true,
@@ -79,6 +112,10 @@ router.post('/foto', async (req, res, next) => {
     });
 
   } catch (error) {
+    console.error('❌ [UPLOAD/FOTO] Error', {
+      mensaje: error.message,
+      stack: error.stack,
+    });
     next(error);
   }
 });
@@ -90,6 +127,15 @@ router.post('/foto', async (req, res, next) => {
 router.post('/formulario', async (req, res, next) => {
   try {
     const { casoId, codigoCaso, datos, coordenadas } = req.body;
+    const t0 = Date.now();
+    console.log('📥 [UPLOAD/FORM] Solicitud recibida', {
+      usuario: req.user?.email,
+      userId: req.user?.id,
+      casoId,
+      codigoCaso,
+      hasDatos: Boolean(datos),
+      coords: coordenadas ? { lat: coordenadas.latitud, lng: coordenadas.longitud } : null,
+    });
 
     // Validaciones
     if (!casoId || !codigoCaso || !datos) {
@@ -113,7 +159,12 @@ router.post('/formulario', async (req, res, next) => {
       longitud: coordenadas?.longitud || null
     };
 
+    const regFormStart = Date.now();
     const formulario = await sqlService.guardarFormulario(formularioData);
+    console.log('✅ [UPLOAD/FORM] Guardado SQL formulario OK', {
+      formularioId: formulario?.id,
+      sqlFormMs: Date.now() - regFormStart,
+    });
 
     // También guardar JSON en OneDrive
     try {
@@ -121,6 +172,12 @@ router.post('/formulario', async (req, res, next) => {
       const buffer = Buffer.from(jsonContent, 'utf-8');
       const fileName = `formulario_${Date.now()}.json`;
 
+      console.log('📝 [UPLOAD/FORM] Subiendo a OneDrive', {
+        fileName,
+        bytes: buffer.length,
+        ruta: `DatosPeritos/${codigoCaso}/Formularios/${fileName}`,
+      });
+      const uploadStart = Date.now();
       const uploadResult = await onedriveService.subirArchivo(
         req.user.token,
         codigoCaso,
@@ -128,8 +185,14 @@ router.post('/formulario', async (req, res, next) => {
         fileName,
         buffer
       );
+      console.log('✅ [UPLOAD/FORM] Subida OneDrive OK', {
+        driveItemId: uploadResult?.id,
+        webUrl: uploadResult?.webUrl,
+        msDurationMs: Date.now() - uploadStart,
+      });
 
       // Registrar archivo en SQL
+      const regStart = Date.now();
       await sqlService.registrarArchivo({
         casoId,
         codigoCaso,
@@ -144,6 +207,10 @@ router.post('/formulario', async (req, res, next) => {
         usuarioId: req.user.id,
         usuarioNombre: req.user.name
       });
+      console.log('✅ [UPLOAD/FORM] Registro SQL archivo OK', {
+        sqlDurationMs: Date.now() - regStart,
+        totalDurationMs: Date.now() - t0,
+      });
 
       res.status(201).json({
         success: true,
@@ -157,7 +224,7 @@ router.post('/formulario', async (req, res, next) => {
       });
 
     } catch (error) {
-      console.warn('⚠️  Formulario guardado en SQL pero no en OneDrive:', error.message);
+      console.warn('⚠️  [UPLOAD/FORM] Guardado en SQL pero no en OneDrive:', error.message);
 
       res.status(201).json({
         success: true,
@@ -171,6 +238,10 @@ router.post('/formulario', async (req, res, next) => {
     }
 
   } catch (error) {
+    console.error('❌ [UPLOAD/FORM] Error', {
+      mensaje: error.message,
+      stack: error.stack,
+    });
     next(error);
   }
 });

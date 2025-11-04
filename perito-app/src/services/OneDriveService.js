@@ -49,10 +49,19 @@ class OneDriveServiceClass {
 
   /**
    * Subir foto a OneDrive con organización por caso
+   * @param {Object} photoData - Datos de la foto
+   * @param {String} peritoCedula - Cédula del perito
+   * @param {String} asignacionId - ID de la asignación
+   * @param {Boolean} isRetry - Si es un reintento de sincronización (no guardar localmente de nuevo)
    */
-  async uploadPhoto(photoData, peritoCedula, asignacionId = null) {
+  async uploadPhoto(photoData, peritoCedula, asignacionId = null, isRetry = false) {
     try {
       if (!this.accessToken) {
+        // Si es un reintento, no volver a guardar localmente
+        if (isRetry) {
+          console.log('⚠️ No hay token de OneDrive, omitiendo reintento');
+          return { success: false, error: 'No OneDrive token available', pendingSync: true };
+        }
         console.log('⚠️ No hay token de OneDrive, guardando localmente');
         return this.savePhotoLocally(photoData, peritoCedula, asignacionId);
       }
@@ -217,11 +226,16 @@ class OneDriveServiceClass {
       const fileName = photoData.fileName || `photo_${Date.now()}.jpg`;
       const localPath = targetDir + fileName;
 
-      // Copiar archivo
-      await FileSystem.copyAsync({
-        from: photoData.uri,
-        to: localPath,
-      });
+      // Copiar archivo solo si origen y destino son diferentes
+      if (photoData.uri !== localPath) {
+        await FileSystem.copyAsync({
+          from: photoData.uri,
+          to: localPath,
+        });
+        console.log(`📋 Foto copiada: ${photoData.uri} → ${localPath}`);
+      } else {
+        console.log(`ℹ️ Foto ya está en la ubicación correcta: ${localPath}`);
+      }
 
       // Guardar metadatos si existen
       if (photoData.metadata) {
@@ -335,7 +349,8 @@ class OneDriveServiceClass {
           const result = await this.uploadPhoto(
             photoData,
             item.peritoCedula,
-            item.asignacionId
+            item.asignacionId,
+            true // isRetry = true para evitar guardar localmente de nuevo
           );
 
           if (result.success) {

@@ -5,11 +5,14 @@
 
 import axios from 'axios';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { PERITO_CONFIG } from '../config/peritoConfig';
 
-// URL del backend - CAMBIAR según el entorno
-const API_URL = __DEV__
-  ? 'http://10.58.230.72:5000/api'  // Desarrollo local - IP de la PC
-  : 'https://perito-app-backend.azurewebsites.net/api'; // Producción en Azure
+// Unificar la URL del backend usando PERITO_CONFIG
+const BASE = (PERITO_CONFIG?.API_BASE_URL || (__DEV__
+  ? 'http://localhost:5000' // Fallback dev
+  : 'https://perito-app-backend.azurewebsites.net' // Fallback prod
+)).replace(/\/$/, '');
+const API_URL = `${BASE}/api`;
 
 class ApiService {
   constructor() {
@@ -28,7 +31,7 @@ class ApiService {
         if (token) {
           config.headers.Authorization = `Bearer ${token}`;
         }
-        console.log(`📡 API Request: ${config.method.toUpperCase()} ${config.url}`);
+        console.log(`📡 API Request: ${config.method.toUpperCase()} ${config.baseURL}${config.url}`);
         return config;
       },
       (error) => {
@@ -229,13 +232,19 @@ class ApiService {
   }
 
   /**
-   * Subir formulario a OneDrive
+   * Subir formulario de campo a OneDrive y registrar en SQL
+   * @param {number} casoId - ID numérico del caso
+   * @param {string} codigoCaso - Código del caso (carpeta en OneDrive)
+   * @param {Object} formularioData - Datos del formulario
+   * @param {{latitud:number,longitud:number}=} coordenadas - Coordenadas opcionales
    */
-  async uploadFormulario(codigoCaso, formularioData) {
+  async uploadFormulario(casoId, codigoCaso, formularioData, coordenadas = null) {
     try {
       const response = await this.api.post('/upload/formulario', {
+        casoId,
         codigoCaso,
         datos: formularioData,
+        coordenadas: coordenadas || undefined,
       });
       return response.data;
     } catch (error) {
@@ -279,7 +288,7 @@ class ApiService {
    */
   async healthCheck() {
     try {
-      const response = await axios.get(`${API_URL.replace('/api', '')}/health`);
+      const response = await axios.get(`${BASE}/health`);
       return response.data;
     } catch (error) {
       console.error('Error en health check:', error);

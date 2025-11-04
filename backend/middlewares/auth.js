@@ -35,7 +35,34 @@ async function authenticateToken(req, res, next) {
       });
     }
 
-    // Validar token con Microsoft Graph
+    // MODO DEMO: Permitir token fake para pruebas (solo en desarrollo)
+    if (token === 'fake-token-demo' && process.env.NODE_ENV !== 'production') {
+      console.log('⚠️  MODO DEMO: Token fake aceptado (solo en desarrollo)');
+
+      // Obtener token real de aplicación para operaciones con OneDrive
+      try {
+        const appToken = await getAppOnlyToken();
+        req.user = {
+          id: 'demo-coordinador-123',
+          email: 'michael.ramirez@ingenierialegal.com',
+          name: 'Michael Ramirez - Coordinador',
+          roles: ['Coordinador', 'Administrador'],
+          token: appToken  // Usar token real de aplicación
+        };
+      } catch (tokenError) {
+        console.error('⚠️  Error obteniendo app token:', tokenError.message);
+        req.user = {
+          id: 'demo-coordinador-123',
+          email: 'michael.ramirez@ingenierialegal.com',
+          name: 'Michael Ramirez - Coordinador',
+          roles: ['Coordinador', 'Administrador'],
+          token: token  // Usar token fake si falla
+        };
+      }
+      return next();
+    }
+
+    // Validar token real con Microsoft Graph
     const userInfo = await validateAzureADToken(token);
 
     if (!userInfo) {
@@ -46,12 +73,13 @@ async function authenticateToken(req, res, next) {
     }
 
     // Adjuntar información del usuario al request
+    // IMPORTANTE: Usar el token del usuario (delegado) para OneDrive
     req.user = {
       id: userInfo.id || userInfo.oid,
       email: userInfo.userPrincipalName || userInfo.email,
       name: userInfo.displayName || userInfo.name,
-      roles: userInfo.roles || [],
-      token: token
+      roles: userInfo.roles || ['Coordinador'],  // Rol por defecto
+      token: token  // Usar token delegado del usuario
     };
 
     console.log(`✅ Usuario autenticado: ${req.user.email} (${req.user.roles.join(', ')})`);

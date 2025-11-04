@@ -1,0 +1,602 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Crear Caso - Perito App</title>
+    <script src="https://alcdn.msauth.net/browser/2.30.0/js/msal-browser.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 40px 20px;
+        }
+
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+        }
+
+        .card {
+            background: white;
+            border-radius: 16px;
+            padding: 40px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            margin-bottom: 20px;
+        }
+
+        h1 {
+            color: #333;
+            margin-bottom: 10px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .subtitle {
+            color: #666;
+            margin-bottom: 30px;
+            font-size: 14px;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        label {
+            display: block;
+            font-weight: 600;
+            color: #333;
+            margin-bottom: 8px;
+            font-size: 14px;
+        }
+
+        input, select, textarea {
+            width: 100%;
+            padding: 12px 16px;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            font-size: 14px;
+            transition: all 0.3s;
+        }
+
+        input:focus, select:focus, textarea:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+
+        textarea {
+            resize: vertical;
+            min-height: 100px;
+        }
+
+        .button-group {
+            display: flex;
+            gap: 10px;
+            margin-top: 30px;
+        }
+
+        button {
+            flex: 1;
+            padding: 14px 24px;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .btn-primary {
+            background: #667eea;
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: #5568d3;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+        }
+
+        .btn-secondary {
+            background: #e0e0e0;
+            color: #333;
+        }
+
+        .btn-secondary:hover {
+            background: #d0d0d0;
+        }
+
+        .alert {
+            padding: 16px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            display: none;
+        }
+
+        .alert.show {
+            display: block;
+            animation: slideIn 0.3s ease;
+        }
+
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateY(-10px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .alert-success {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+
+        .alert-error {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+
+        .alert-info {
+            background: #d1ecf1;
+            color: #0c5460;
+            border: 1px solid #bee5eb;
+        }
+
+        .loading {
+            display: none;
+            text-align: center;
+            padding: 20px;
+        }
+
+        .loading.show {
+            display: block;
+        }
+
+        .spinner {
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid #667eea;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 10px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .folder-structure {
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 8px;
+            margin-top: 20px;
+            font-family: 'Courier New', monospace;
+            font-size: 13px;
+            color: #333;
+            border-left: 4px solid #667eea;
+        }
+
+        .folder-structure .folder {
+            margin: 5px 0;
+            padding-left: 20px;
+        }
+
+        .folder-structure .folder::before {
+            content: '📁 ';
+        }
+
+        .result-box {
+            background: white;
+            border: 2px solid #28a745;
+            border-radius: 8px;
+            padding: 20px;
+            margin-top: 20px;
+        }
+
+        .result-title {
+            font-weight: 600;
+            color: #28a745;
+            margin-bottom: 10px;
+            font-size: 18px;
+        }
+
+        .result-item {
+            margin: 10px 0;
+            padding: 10px;
+            background: #f8f9fa;
+            border-radius: 6px;
+        }
+
+        .result-label {
+            font-weight: 600;
+            color: #666;
+            font-size: 12px;
+            text-transform: uppercase;
+        }
+
+        .result-value {
+            color: #333;
+            margin-top: 5px;
+        }
+
+        .badge {
+            display: inline-block;
+            padding: 4px 12px;
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: 600;
+        }
+
+        .badge-success {
+            background: #d4edda;
+            color: #155724;
+        }
+
+        .badge-warning {
+            background: #fff3cd;
+            color: #856404;
+        }
+
+        .user-bar {
+            background: white;
+            border-radius: 12px;
+            padding: 16px 24px;
+            margin-bottom: 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+        }
+
+        .user-info {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            color: #333;
+            font-size: 14px;
+        }
+
+        .btn-logout {
+            background: transparent;
+            border: 2px solid #dc3545;
+            color: #dc3545;
+            padding: 8px 16px;
+            border-radius: 6px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .btn-logout:hover {
+            background: #dc3545;
+            color: white;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div id="userBar" class="user-bar" style="display: none;">
+            <div class="user-info">
+                <span>👤</span>
+                <span id="userName"></span>
+            </div>
+            <button id="logoutBtn" class="btn-logout">Cerrar Sesión</button>
+        </div>
+
+        <div class="card">
+            <h1>
+                🏗️ Crear Nuevo Caso
+            </h1>
+            <p class="subtitle">
+                Al crear un caso, se generarán automáticamente las carpetas en OneDrive para almacenar fotos y documentos.
+            </p>
+
+            <div id="alertBox" class="alert"></div>
+
+            <form id="casoForm">
+                <div class="form-group">
+                    <label for="codigo">Código del Caso *</label>
+                    <input type="text" id="codigo" name="codigo" placeholder="Ej: CASO_2025_001" required>
+                </div>
+
+                <div class="form-group">
+                    <label for="direccion">Dirección *</label>
+                    <input type="text" id="direccion" name="direccion" placeholder="Ej: Calle 123 #45-67" required>
+                </div>
+
+                <div class="form-group">
+                    <label for="ciudad">Ciudad *</label>
+                    <input type="text" id="ciudad" name="ciudad" placeholder="Ej: Bogotá" required>
+                </div>
+
+                <div class="form-group">
+                    <label for="barrio">Barrio</label>
+                    <input type="text" id="barrio" name="barrio" placeholder="Ej: Chapinero">
+                </div>
+
+                <div class="form-group">
+                    <label for="tipoInmueble">Tipo de Inmueble *</label>
+                    <select id="tipoInmueble" name="tipoInmueble" required>
+                        <option value="">Seleccione...</option>
+                        <option value="Apartamento">Apartamento</option>
+                        <option value="Casa">Casa</option>
+                        <option value="Lote">Lote</option>
+                        <option value="Bodega">Bodega</option>
+                        <option value="Local Comercial">Local Comercial</option>
+                        <option value="Oficina">Oficina</option>
+                        <option value="Finca">Finca</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label for="prioridad">Prioridad</label>
+                    <select id="prioridad" name="prioridad">
+                        <option value="media">Media</option>
+                        <option value="alta">Alta</option>
+                        <option value="baja">Baja</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label for="observaciones">Observaciones</label>
+                    <textarea id="observaciones" name="observaciones" placeholder="Información adicional..."></textarea>
+                </div>
+
+                <div class="folder-structure">
+                    <strong>📂 Estructura de carpetas que se creará:</strong>
+                    <div class="folder">DatosPeritos/</div>
+                    <div class="folder" style="padding-left: 40px;">└── <span id="preview-codigo">CODIGO_CASO</span>/</div>
+                    <div class="folder" style="padding-left: 60px;">├── Fotos/</div>
+                    <div class="folder" style="padding-left: 60px;">└── Formularios/</div>
+                </div>
+
+                <div class="button-group">
+                    <button type="button" class="btn-secondary" onclick="window.location.href='test.html'">
+                        ← Volver
+                    </button>
+                    <button type="submit" class="btn-primary">
+                        ✅ Crear Caso y Carpetas OneDrive
+                    </button>
+                </div>
+            </form>
+
+            <div id="loading" class="loading">
+                <div class="spinner"></div>
+                <p>Creando caso y carpetas en OneDrive...</p>
+            </div>
+
+            <div id="resultBox" style="display: none;">
+                <!-- Resultado se mostrará aquí -->
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const API_BASE = window.location.origin;
+
+        // Configuración de MSAL
+        const msalConfig = {
+            auth: {
+                clientId: 'c8256ffe-b0fc-406d-8832-736240ae5570',
+                authority: 'https://login.microsoftonline.com/fd32daf0-141c-4cb5-a224-10255204f33d',
+                redirectUri: window.location.origin + '/web-coordinador/crear-caso-simple.html'
+            },
+            cache: {
+                cacheLocation: 'localStorage',
+                storeAuthStateInCookie: false
+            }
+        };
+
+        const msalInstance = new msal.PublicClientApplication(msalConfig);
+
+        let accessToken = null;
+
+        // Verificar autenticación al cargar
+        window.addEventListener('load', async () => {
+            try {
+                await msalInstance.initialize();
+                const accounts = msalInstance.getAllAccounts();
+
+                if (accounts.length === 0) {
+                    // No hay sesión, redirigir al login
+                    console.log('No hay sesión activa, redirigiendo a login...');
+                    window.location.href = 'login.html';
+                    return;
+                }
+
+                // Obtener token silenciosamente
+                try {
+                    const response = await msalInstance.acquireTokenSilent({
+                        scopes: ['User.Read', 'Files.ReadWrite.All'],
+                        account: accounts[0]
+                    });
+                    accessToken = response.accessToken;
+                    console.log('✅ Token obtenido correctamente');
+
+                    // Mostrar info del usuario
+                    showUserInfo(accounts[0]);
+                } catch (error) {
+                    console.error('Error obteniendo token:', error);
+                    // Redirigir al login si falla
+                    window.location.href = 'login.html';
+                }
+            } catch (error) {
+                console.error('Error iniciando MSAL:', error);
+                window.location.href = 'login.html';
+            }
+        });
+
+        function showUserInfo(account) {
+            // Mostrar barra de usuario
+            document.getElementById('userBar').style.display = 'flex';
+            document.getElementById('userName').textContent = account.name || account.username;
+        }
+
+        // Logout
+        document.getElementById('logoutBtn').addEventListener('click', async () => {
+            try {
+                await msalInstance.logoutPopup();
+                window.location.href = 'login.html';
+            } catch (error) {
+                console.error('Error al cerrar sesión:', error);
+                // Forzar limpieza y redirección
+                localStorage.clear();
+                window.location.href = 'login.html';
+            }
+        });
+
+        // Actualizar preview del código
+        document.getElementById('codigo').addEventListener('input', function(e) {
+            document.getElementById('preview-codigo').textContent = e.target.value || 'CODIGO_CASO';
+        });
+
+        // Manejar envío del formulario
+        document.getElementById('casoForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+
+            // Verificar que tengamos token
+            if (!accessToken) {
+                showError('No hay sesión activa. Iniciando sesión...');
+                await getToken();
+                if (!accessToken) {
+                    return;
+                }
+            }
+
+            const formData = {
+                codigo: document.getElementById('codigo').value,
+                direccion: document.getElementById('direccion').value,
+                ciudad: document.getElementById('ciudad').value,
+                barrio: document.getElementById('barrio').value,
+                tipoInmueble: document.getElementById('tipoInmueble').value,
+                prioridad: document.getElementById('prioridad').value || 'media',
+                observaciones: document.getElementById('observaciones').value
+            };
+
+            // Mostrar loading
+            document.getElementById('casoForm').style.display = 'none';
+            document.getElementById('loading').classList.add('show');
+            document.getElementById('alertBox').classList.remove('show');
+
+            try {
+                // Crear caso en el backend con token real de Azure AD
+                const response = await fetch(`${API_BASE}/api/casos`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${accessToken}`
+                    },
+                    body: JSON.stringify(formData)
+                });
+
+                const result = await response.json();
+
+                // Ocultar loading
+                document.getElementById('loading').classList.remove('show');
+
+                if (response.ok) {
+                    // Mostrar resultado exitoso
+                    showSuccess(result, formData);
+                } else {
+                    // Mostrar error
+                    showError(result.error || 'Error al crear el caso');
+                    document.getElementById('casoForm').style.display = 'block';
+                }
+
+            } catch (error) {
+                document.getElementById('loading').classList.remove('show');
+                showError('Error de conexión: ' + error.message);
+                document.getElementById('casoForm').style.display = 'block';
+            }
+        });
+
+        function showSuccess(result, formData) {
+            const resultBox = document.getElementById('resultBox');
+            resultBox.style.display = 'block';
+            resultBox.innerHTML = `
+                <div class="result-box">
+                    <div class="result-title">✅ Caso Creado Exitosamente</div>
+
+                    <div class="result-item">
+                        <div class="result-label">Código del Caso</div>
+                        <div class="result-value"><strong>${formData.codigo}</strong></div>
+                    </div>
+
+                    <div class="result-item">
+                        <div class="result-label">ID del Caso</div>
+                        <div class="result-value">${result.caso?.id || 'N/A'}</div>
+                    </div>
+
+                    <div class="result-item">
+                        <div class="result-label">Dirección</div>
+                        <div class="result-value">${formData.direccion}, ${formData.ciudad}</div>
+                    </div>
+
+                    <div class="result-item">
+                        <div class="result-label">Estado</div>
+                        <div class="result-value">
+                            <span class="badge badge-warning">Pendiente de Asignación</span>
+                        </div>
+                    </div>
+
+                    <div class="result-item">
+                        <div class="result-label">📂 Carpetas OneDrive</div>
+                        <div class="result-value" style="margin-top: 10px;">
+                            <div class="folder-structure">
+                                <div class="folder">DatosPeritos/</div>
+                                <div class="folder" style="padding-left: 20px;">└── ${formData.codigo}/</div>
+                                <div class="folder" style="padding-left: 40px;">├── Fotos/ <span class="badge badge-success">Creada</span></div>
+                                <div class="folder" style="padding-left: 40px;">└── Formularios/ <span class="badge badge-success">Creada</span></div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div style="margin-top: 20px; display: flex; gap: 10px;">
+                        <button class="btn-primary" onclick="location.reload()">
+                            ➕ Crear Otro Caso
+                        </button>
+                        <button class="btn-secondary" onclick="window.location.href='test.html'">
+                            ← Volver al Inicio
+                        </button>
+                    </div>
+                </div>
+            `;
+        }
+
+        function showError(message) {
+            const alertBox = document.getElementById('alertBox');
+            alertBox.className = 'alert alert-error show';
+            alertBox.innerHTML = `
+                <strong>❌ Error:</strong> ${message}
+                <br><br>
+                <strong>Posibles causas:</strong>
+                <ul style="margin-top: 10px; padding-left: 20px;">
+                    <li>El código del caso ya existe</li>
+                    <li>No hay conexión con el backend</li>
+                    <li>Token de OneDrive no válido</li>
+                    <li>Base de datos no accesible</li>
+                </ul>
+                <br>
+                <em>Tip: Si es un problema de OneDrive, el caso se creará igualmente en la base de datos.</em>
+            `;
+        }
+    </script>
+</body>
+</html>

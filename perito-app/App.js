@@ -4,12 +4,16 @@
  */
 
 import { useState, useEffect } from 'react';
-import { NavigationContainer } from '@react-navigation/native';
+import { NavigationContainer, DefaultTheme as NavigationDefaultTheme } from '@react-navigation/native';
 import { createStackNavigator } from '@react-navigation/stack';
-import { Provider as PaperProvider } from 'react-native-paper';
+import { Provider as PaperProvider, MD3LightTheme as PaperLightTheme } from 'react-native-paper';
 import { View, Text, StyleSheet, ActivityIndicator } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import AzureAuthService from './src/services/AzureAuthService';
 import ApiService from './src/services/ApiService';
+import { SyncService } from './src/services/SyncService';
+import { DatabaseService } from './src/services/DatabaseService-native';
+import { COLORS } from './src/constants';
 
 // Importaciones de pantallas
 import LoginScreen from './src/screens/LoginScreen';
@@ -33,28 +37,58 @@ function App() {
 
   const initializeApp = async () => {
     try {
-      console.log('🔍 Verificando autenticación con Microsoft Azure AD...');
+      // 🔥 RESET TEMPORAL: Borrar caché de sesión anterior (COMENTAR DESPUÉS)
+      console.log('🔥 RESET: Borrando sesión anterior...');
+      await AsyncStorage.multiRemove([
+        'azureAccessToken',
+        'azureAccount',
+        'userData',
+        'microsoft_token',
+        'refresh_token',
+        'jwt_token',
+        'access_token'
+      ]);
+      console.log('✅ Sesión anterior borrada');
+      // 🔥 FIN RESET TEMPORAL
 
-      // Verificar autenticación con Azure AD
-      const isAuth = await AzureAuthService.isAuthenticated();
-      console.log('🔐 Token Azure AD encontrado:', isAuth);
+      console.log('🔐 Iniciando app - Verificando autenticación...');
 
-      if (isAuth) {
-        // Verificar token con backend
+      // Verificar si hay sesión guardada
+      const authResult = await AzureAuthService.checkAuth();
+
+      if (authResult.authenticated) {
+        console.log('✅ Sesión existente encontrada');
+
+        // Inicializar base de datos SQLite
         try {
-          await ApiService.getMe();
-          setIsAuthenticated(true);
-          console.log('✅ Usuario autenticado con Microsoft Azure AD');
-        } catch (error) {
-          console.log('⚠️ Token local encontrado pero inválido, requiere nuevo login');
-          await AzureAuthService.logout();
+          await DatabaseService.initialize();
+          console.log('✅ Base de datos SQLite inicializada');
+        } catch (dbError) {
+          console.error('⚠️ Error inicializando base de datos:', dbError);
         }
+
+        // Obtener datos del usuario
+        const account = await AzureAuthService.getAccount();
+        if (account && account.id) {
+          // Inicializar servicio de sincronización con ID real
+          try {
+            await SyncService.initialize(account.id);
+            console.log('✅ Servicio de sincronización iniciado para:', account.name);
+          } catch (syncError) {
+            console.error('⚠️ Error inicializando sincronización:', syncError);
+          }
+        }
+
+        setIsAuthenticated(true);
+        console.log('✅ Usuario autenticado correctamente');
       } else {
-        console.log('❌ Usuario no autenticado');
+        console.log('⚠️ No hay sesión activa - Mostrando login');
+        setIsAuthenticated(false);
       }
 
     } catch (error) {
       console.error('❌ Error inicializando app:', error);
+      setIsAuthenticated(false); // Mostrar login si hay error
     } finally {
       console.log('✅ Inicialización completada');
       setIsLoading(false);
@@ -64,7 +98,7 @@ function App() {
   if (isLoading) {
     return (
       <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color="#1D4ED8" />
+        <ActivityIndicator size="large" color={COLORS.icon} />
         <Text style={styles.loadingText}>🔄 Cargando Perito App...</Text>
         <Text style={styles.loadingSubtext}>Azure Integration v2.0</Text>
       </View>
@@ -73,13 +107,38 @@ function App() {
 
   console.log('🎯 Renderizando navegación, autenticado:', isAuthenticated);
 
+  const paperTheme = {
+    ...PaperLightTheme,
+    colors: {
+      ...PaperLightTheme.colors,
+      primary: COLORS.primary,
+      secondary: COLORS.secondary,
+      background: COLORS.background,
+      surface: COLORS.surface,
+      text: COLORS.text,
+      outline: COLORS.border,
+    },
+  };
+
+  const navTheme = {
+    ...NavigationDefaultTheme,
+    colors: {
+      ...NavigationDefaultTheme.colors,
+      primary: COLORS.primary,
+      background: COLORS.background,
+      card: COLORS.surface,
+      text: COLORS.text,
+      border: COLORS.border,
+    },
+  };
+
   return (
-    <PaperProvider>
-      <NavigationContainer>
+    <PaperProvider theme={paperTheme}>
+      <NavigationContainer theme={navTheme}>
         <Stack.Navigator
           screenOptions={{
-            headerStyle: { backgroundColor: '#1D4ED8' },
-            headerTintColor: '#FFFFFF',
+            headerStyle: { backgroundColor: COLORS.primary },
+            headerTintColor: COLORS.white,
             headerTitleStyle: { fontWeight: 'bold' },
           }}
         >
@@ -125,7 +184,7 @@ function App() {
               <Stack.Screen
                 name="FormularioCampo"
                 component={FormularioCampoScreen}
-                options={{ title: 'Formulario' }}
+                options={{ headerShown: false }}
               />
             </>
           )}
@@ -140,16 +199,16 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: '#F8FAFC',
+    backgroundColor: COLORS.background,
   },
   loadingText: {
     fontSize: 18,
-    color: '#1D4ED8',
+    color: COLORS.text,
     fontWeight: 'bold',
   },
   loadingSubtext: {
     fontSize: 14,
-    color: '#6B7280',
+    color: COLORS.textSecondary,
     marginTop: 8,
   },
 });

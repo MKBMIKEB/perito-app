@@ -36,6 +36,7 @@ const casosRoutes = require('./routes/casos');
 const uploadRoutes = require('./routes/upload');
 const onedriveRoutes = require('./routes/onedrive');
 const peritosRoutes = require('./routes/peritos');
+const syncRoutes = require('./routes/sync');
 
 // Inicializar Express
 const app = express();
@@ -43,8 +44,18 @@ const PORT = process.env.PORT || 3000;
 
 // ===== MIDDLEWARES GLOBALES =====
 
-// Seguridad con Helmet
-app.use(helmet());
+// Seguridad con Helmet (configurado para permitir app web)
+app.use(helmet({
+  contentSecurityPolicy: {
+    directives: {
+      defaultSrc: ["'self'"],
+      scriptSrc: ["'self'", "'unsafe-inline'", "https://alcdn.msauth.net", "https://cdn.jsdelivr.net"],
+      styleSrc: ["'self'", "'unsafe-inline'"],
+      imgSrc: ["'self'", "data:", "https:"],
+      connectSrc: ["'self'", "https://login.microsoftonline.com", "https://*.documents.azure.com"]
+    }
+  }
+}));
 
 // CORS
 const corsOptions = {
@@ -57,6 +68,11 @@ app.use(cors(corsOptions));
 // Body parser
 app.use(bodyParser.json({ limit: '50mb' }));
 app.use(bodyParser.urlencoded({ extended: true, limit: '50mb' }));
+
+// Servir archivos estáticos de la app web
+const path = require('path');
+app.use('/web', express.static(path.join(__dirname, '../web-coordinador')));
+app.use('/web-coordinador', express.static(path.join(__dirname, '../web-coordinador')));
 
 // Rate limiting
 const limiter = rateLimit({
@@ -93,7 +109,8 @@ app.get('/', (req, res) => {
       casos: '/api/casos',
       upload: '/api/upload',
       onedrive: '/api/onedrive',
-      peritos: '/api/peritos'
+      peritos: '/api/peritos',
+      sync: '/api/sync'
     }
   });
 });
@@ -108,6 +125,7 @@ app.use('/api/casos', authenticateToken, casosRoutes);
 app.use('/api/upload', authenticateToken, uploadRoutes);
 app.use('/api/onedrive', authenticateToken, onedriveRoutes);
 app.use('/api/peritos', authenticateToken, peritosRoutes);
+app.use('/api/sync', authenticateToken, syncRoutes);
 
 // ===== MANEJO DE ERRORES =====
 

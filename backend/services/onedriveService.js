@@ -10,8 +10,35 @@ const { GraphAPIError } = require('../middlewares/errorHandler');
 const path = require('path');
 
 const ONEDRIVE_ROOT = process.env.ONEDRIVE_FOLDER_ROOT || 'DatosPeritos';
+const ONEDRIVE_USER_EMAIL = process.env.ONEDRIVE_USER_EMAIL || 'michael.ramirez@ingenierialegal.com';
 
 class OnedriveService {
+  constructor() {
+    this.driveId = null;
+    this.userDriveCache = {};
+  }
+
+  /**
+   * Obtiene el driveId del usuario logueado
+   */
+  async getDriveId(client) {
+    if (this.driveId) {
+      return this.driveId;
+    }
+
+    try {
+      // Usar /me/drive para token delegado (usuario logueado)
+      const drive = await client.api('/me/drive').get();
+
+      this.driveId = drive.id;
+      console.log(`📂 Drive ID obtenido: ${this.driveId}`);
+      return this.driveId;
+    } catch (error) {
+      console.error(`❌ Error obteniendo driveId:`, error.message);
+      throw error;
+    }
+  }
+
   /**
    * Inicializa el cliente de Graph
    */
@@ -34,17 +61,23 @@ class OnedriveService {
 
       console.log(`📁 Creando estructura de carpetas para ${codigoCaso}...`);
 
+      // Obtener driveId
+      const driveId = await this.getDriveId(client);
+
       // 1. Verificar/crear carpeta raíz "DatosPeritos"
-      const folderRaiz = await this.crearCarpetaSiNoExiste(client, 'root', ONEDRIVE_ROOT);
+      const folderRaiz = await this.crearCarpetaSiNoExiste(client, 'root', ONEDRIVE_ROOT, driveId);
+
+      // Compartir carpeta raíz con la organización
+      await this.compartirCarpeta(client, driveId, folderRaiz.id, ONEDRIVE_ROOT);
 
       // 2. Crear carpeta del caso
-      const folderCaso = await this.crearCarpetaSiNoExiste(client, folderRaiz.id, codigoCaso);
+      const folderCaso = await this.crearCarpetaSiNoExiste(client, folderRaiz.id, codigoCaso, driveId);
 
       // 3. Crear subcarpeta "Fotos"
-      const folderFotos = await this.crearCarpetaSiNoExiste(client, folderCaso.id, 'Fotos');
+      const folderFotos = await this.crearCarpetaSiNoExiste(client, folderCaso.id, 'Fotos', driveId);
 
       // 4. Crear subcarpeta "Formularios"
-      const folderFormularios = await this.crearCarpetaSiNoExiste(client, folderCaso.id, 'Formularios');
+      const folderFormularios = await this.crearCarpetaSiNoExiste(client, folderCaso.id, 'Formularios', driveId);
 
       console.log(`✅ Estructura creada para ${codigoCaso}`);
 
@@ -66,16 +99,48 @@ class OnedriveService {
   }
 
   /**
+   * Comparte una carpeta con permisos de edición para toda la organización
+   */
+  async compartirCarpeta(client, driveId, folderId, nombreCarpeta) {
+    try {
+      console.log(`🔓 Compartiendo carpeta "${nombreCarpeta}" con la organización...`);
+
+      // Crear un link de compartición con permisos de edición para la organización
+      const permission = await client
+        .api(`/drives/${driveId}/items/${folderId}/createLink`)
+        .post({
+          type: 'edit',
+          scope: 'organization'
+        });
+
+      console.log(`✅ Carpeta "${nombreCarpeta}" compartida con la organización`);
+      return permission;
+
+    } catch (error) {
+      console.warn(`⚠️  No se pudo compartir carpeta "${nombreCarpeta}":`, error.message);
+      // No fallar si el compartir falla, solo advertir
+      return null;
+    }
+  }
+
+  /**
    * Crea una carpeta si no existe, o retorna la existente
    */
-  async crearCarpetaSiNoExiste(client, parentId, nombreCarpeta) {
+  async crearCarpetaSiNoExiste(client, parentId, nombreCarpeta, driveId) {
     try {
-      // Construir ruta según el parent
+      // Construir ruta usando driveId
       let rutaAPI;
       if (parentId === 'root') {
-        rutaAPI = `/me/drive/root/children`;
+        rutaAPI = `/drives/${driveId}/root/children`;
       } else {
-        rutaAPI = `/me/drive/items/${parentId}/children`;
+        rutaAPI = `/drives/${driveId}/items/${parentId}/children`;
+      }
+
+      // Primero intentar buscar si ya existe
+      const existente = await this.buscarCarpetaEnParent(client, parentId, nombreCarpeta, driveId);
+      if (existente) {
+        console.log(`✅ Carpeta "${nombreCarpeta}" ya existe`);
+        return existente;
       }
 
       // Crear nueva carpeta
@@ -91,6 +156,17 @@ class OnedriveService {
       return newFolder;
 
     } catch (error) {
+      // Si falla la creación, intentar buscar de nuevo (puede que otro proceso la creó)
+      try {
+        const existente = await this.buscarCarpetaEnParent(client, parentId, nombreCarpeta, driveId);
+        if (existente) {
+          console.log(`✅ Carpeta "${nombreCarpeta}" encontrada en reintento`);
+          return existente;
+        }
+      } catch (retryError) {
+        console.error(`❌ Error en reintento buscando carpeta:`, retryError.message);
+      }
+
       console.error(`❌ Error creando carpeta "${nombreCarpeta}":`, error.message);
       throw error;
     }
@@ -99,15 +175,28 @@ class OnedriveService {
   /**
    * Busca una carpeta específica dentro de un parent
    */
-  async buscarCarpetaEnParent(client, parentId, nombreCarpeta) {
+  async buscarCarpetaEnParent(client, parentId, nombreCarpeta, driveId) {
     try {
+      let rutaBusqueda;
+      if (parentId === 'root') {
+        rutaBusqueda = `/drives/${driveId}/root/children`;
+      } else {
+        rutaBusqueda = `/drives/${driveId}/items/${parentId}/children`;
+      }
+
+      // Obtener todos los hijos y buscar manualmente
       const children = await client
-        .api(`/me/drive/items/${parentId}/children`)
-        .filter(`name eq '${nombreCarpeta}' and folder ne null`)
+        .api(rutaBusqueda)
         .get();
 
-      return children.value.length > 0 ? children.value[0] : null;
+      // Buscar la carpeta por nombre manualmente
+      const carpeta = children.value.find(item =>
+        item.name === nombreCarpeta && item.folder !== undefined
+      );
+
+      return carpeta || null;
     } catch (error) {
+      console.error(`⚠️  Error buscando carpeta "${nombreCarpeta}":`, error.message);
       return null;
     }
   }
@@ -118,6 +207,7 @@ class OnedriveService {
   async subirArchivo(userToken, codigoCaso, tipoArchivo, nombreArchivo, contenidoBuffer) {
     try {
       const client = await this.getClient(userToken);
+      const driveId = await this.getDriveId(client);
 
       // Determinar subcarpeta según tipo
       const subcarpeta = tipoArchivo === 'foto' ? 'Fotos' : 'Formularios';
@@ -128,14 +218,14 @@ class OnedriveService {
       // Para archivos pequeños (<4MB), usar PUT simple
       if (contenidoBuffer.length < 4 * 1024 * 1024) {
         const uploadedFile = await client
-          .api(`/me/drive/root:/${rutaCompleta}:/content`)
+          .api(`/drives/${driveId}/root:/${rutaCompleta}:/content`)
           .put(contenidoBuffer);
 
         console.log(`✅ Archivo subido: ${nombreArchivo} (${contenidoBuffer.length} bytes)`);
         return uploadedFile;
       } else {
         // Para archivos grandes, usar upload session
-        return await this.subirArchivoGrande(client, rutaCompleta, contenidoBuffer);
+        return await this.subirArchivoGrande(client, driveId, rutaCompleta, contenidoBuffer);
       }
 
     } catch (error) {
@@ -147,13 +237,13 @@ class OnedriveService {
   /**
    * Sube archivos grandes usando upload session (>4MB)
    */
-  async subirArchivoGrande(client, rutaCompleta, contenidoBuffer) {
+  async subirArchivoGrande(client, driveId, rutaCompleta, contenidoBuffer) {
     try {
       console.log(`📤 Iniciando upload session para archivo grande...`);
 
       // Crear upload session
       const uploadSession = await client
-        .api(`/me/drive/root:/${rutaCompleta}:/createUploadSession`)
+        .api(`/drives/${driveId}/root:/${rutaCompleta}:/createUploadSession`)
         .post({
           item: {
             '@microsoft.graph.conflictBehavior': 'rename'
@@ -203,20 +293,21 @@ class OnedriveService {
   async listarArchivosCaso(userToken, codigoCaso) {
     try {
       const client = await this.getClient(userToken);
+      const driveId = await this.getDriveId(client);
       const rutaCaso = `${ONEDRIVE_ROOT}/${codigoCaso}`;
 
       console.log(`📋 Listando archivos de: ${rutaCaso}`);
 
       // Obtener carpeta del caso
       const casofolder = await client
-        .api(`/me/drive/root:/${rutaCaso}`)
+        .api(`/drives/${driveId}/root:/${rutaCaso}`)
         .get();
 
       // Listar fotos
-      const fotos = await this.listarArchivosEnCarpeta(client, `${rutaCaso}/Fotos`);
+      const fotos = await this.listarArchivosEnCarpeta(client, driveId, `${rutaCaso}/Fotos`);
 
       // Listar formularios
-      const formularios = await this.listarArchivosEnCarpeta(client, `${rutaCaso}/Formularios`);
+      const formularios = await this.listarArchivosEnCarpeta(client, driveId, `${rutaCaso}/Formularios`);
 
       console.log(`✅ Encontrados: ${fotos.length} fotos, ${formularios.length} formularios`);
 
@@ -236,10 +327,10 @@ class OnedriveService {
   /**
    * Lista archivos en una carpeta específica
    */
-  async listarArchivosEnCarpeta(client, rutaCarpeta) {
+  async listarArchivosEnCarpeta(client, driveId, rutaCarpeta) {
     try {
       const items = await client
-        .api(`/me/drive/root:/${rutaCarpeta}:/children`)
+        .api(`/drives/${driveId}/root:/${rutaCarpeta}:/children`)
         .select('id,name,size,createdDateTime,lastModifiedDateTime,file,webUrl,@microsoft.graph.downloadUrl')
         .get();
 
@@ -269,8 +360,9 @@ class OnedriveService {
   async eliminarArchivo(userToken, archivoId) {
     try {
       const client = await this.getClient(userToken);
+      const driveId = await this.getDriveId(client);
 
-      await client.api(`/me/drive/items/${archivoId}`).delete();
+      await client.api(`/drives/${driveId}/items/${archivoId}`).delete();
 
       console.log(`✅ Archivo ${archivoId} eliminado`);
       return { success: true, message: 'Archivo eliminado correctamente' };
@@ -287,9 +379,10 @@ class OnedriveService {
   async obtenerUrlDescarga(userToken, archivoId) {
     try {
       const client = await this.getClient(userToken);
+      const driveId = await this.getDriveId(client);
 
       const archivo = await client
-        .api(`/me/drive/items/${archivoId}`)
+        .api(`/drives/${driveId}/items/${archivoId}`)
         .select('@microsoft.graph.downloadUrl')
         .get();
 
@@ -307,8 +400,9 @@ class OnedriveService {
   async obtenerMetadatosArchivo(userToken, archivoId) {
     try {
       const client = await this.getClient(userToken);
+      const driveId = await this.getDriveId(client);
 
-      const archivo = await client.api(`/me/drive/items/${archivoId}`).get();
+      const archivo = await client.api(`/drives/${driveId}/items/${archivoId}`).get();
 
       return {
         id: archivo.id,

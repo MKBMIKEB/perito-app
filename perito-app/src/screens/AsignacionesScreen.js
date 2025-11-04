@@ -15,6 +15,7 @@ import {
   Alert,
 } from 'react-native';
 import ApiService from '../services/ApiService';
+import { COLORS } from '../constants';
 
 const AsignacionesScreen = ({ navigation }) => {
   const [casos, setCasos] = useState([]);
@@ -35,7 +36,7 @@ const AsignacionesScreen = ({ navigation }) => {
       setLoading(true);
       setError(null);
 
-      // Obtener usuario actual
+      // Obtener usuario actual (usaremos su id como coordinadorId para filtrar)
       const userData = await ApiService.getMe();
       console.log('👤 Usuario:', userData.displayName);
 
@@ -45,7 +46,9 @@ const AsignacionesScreen = ({ navigation }) => {
         filtros.estado = filtro;
       }
 
-      const misCasos = await ApiService.getCasos(filtros);
+      // MVP: mostrar solo casos creados por el coordinador actual
+      const filtrosConCoordinador = { ...filtros, coordinadorId: userData?.id };
+      const misCasos = await ApiService.getCasos(filtrosConCoordinador);
       console.log(`📋 Casos cargados: ${misCasos.length}`);
 
       setCasos(misCasos);
@@ -80,13 +83,13 @@ const AsignacionesScreen = ({ navigation }) => {
   const getEstadoColor = (estado) => {
     switch (estado) {
       case 'pendiente':
-        return '#F59E0B'; // Amarillo
+        return '#BDBDBD'; // Gris claro
       case 'en_proceso':
-        return '#3B82F6'; // Azul
+        return '#9E9E9E'; // Gris medio
       case 'completado':
-        return '#10B981'; // Verde
+        return '#4F4F4F'; // Gris oscuro
       default:
-        return '#6B7280'; // Gris
+        return COLORS.icon; // Gris
     }
   };
 
@@ -180,7 +183,7 @@ const AsignacionesScreen = ({ navigation }) => {
   if (loading && !refreshing) {
     return (
       <View style={styles.centerContainer}>
-        <ActivityIndicator size="large" color="#1D4ED8" />
+        <ActivityIndicator size="large" color={COLORS.icon} />
         <Text style={styles.loadingText}>Cargando asignaciones...</Text>
       </View>
     );
@@ -245,15 +248,15 @@ const AsignacionesScreen = ({ navigation }) => {
       ) : (
         <FlatList
           data={casos}
-          keyExtractor={(item) => item.id.toString()}
+          keyExtractor={(item) => (item.codigo ? String(item.codigo) : String(item.id))}
           renderItem={renderCaso}
           contentContainerStyle={styles.listContainer}
           refreshControl={
             <RefreshControl
               refreshing={refreshing}
               onRefresh={handleRefresh}
-              colors={['#1D4ED8']}
-              tintColor="#1D4ED8"
+              colors={[COLORS.icon]}
+              tintColor={COLORS.icon}
             />
           }
         />
@@ -265,19 +268,19 @@ const AsignacionesScreen = ({ navigation }) => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F8FAFC',
+    backgroundColor: COLORS.background,
   },
   centerContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: '#F8FAFC',
+    backgroundColor: COLORS.background,
     padding: 20,
   },
   loadingText: {
     marginTop: 16,
     fontSize: 16,
-    color: '#6B7280',
+    color: COLORS.textSecondary,
   },
   errorIcon: {
     fontSize: 48,
@@ -285,12 +288,12 @@ const styles = StyleSheet.create({
   },
   errorText: {
     fontSize: 16,
-    color: '#EF4444',
+    color: COLORS.text,
     textAlign: 'center',
     marginBottom: 20,
   },
   retryButton: {
-    backgroundColor: '#1D4ED8',
+    backgroundColor: COLORS.primary,
     paddingHorizontal: 24,
     paddingVertical: 12,
     borderRadius: 8,
@@ -304,25 +307,25 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     padding: 16,
     gap: 8,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: COLORS.surface,
     borderBottomWidth: 1,
-    borderBottomColor: '#E5E7EB',
+    borderBottomColor: COLORS.border,
   },
   filtroButton: {
     flex: 1,
     paddingVertical: 8,
     paddingHorizontal: 12,
     borderRadius: 8,
-    backgroundColor: '#F3F4F6',
+    backgroundColor: '#F5F5F5',
     alignItems: 'center',
   },
   filtroButtonActive: {
-    backgroundColor: '#1D4ED8',
+    backgroundColor: COLORS.primary,
   },
   filtroText: {
     fontSize: 13,
     fontWeight: '600',
-    color: '#6B7280',
+    color: COLORS.textSecondary,
   },
   filtroTextActive: {
     color: '#FFFFFF',
@@ -331,7 +334,7 @@ const styles = StyleSheet.create({
     padding: 16,
   },
   casoCard: {
-    backgroundColor: '#FFFFFF',
+    backgroundColor: COLORS.surface,
     borderRadius: 12,
     padding: 16,
     marginBottom: 12,
@@ -359,11 +362,11 @@ const styles = StyleSheet.create({
   casoCodigo: {
     fontSize: 16,
     fontWeight: 'bold',
-    color: '#1F2937',
+    color: COLORS.text,
   },
   casoTipo: {
     fontSize: 13,
-    color: '#6B7280',
+    color: COLORS.textSecondary,
     marginTop: 2,
   },
   estadoBadge: {
@@ -381,12 +384,12 @@ const styles = StyleSheet.create({
   },
   casoDireccion: {
     fontSize: 14,
-    color: '#374151',
+    color: COLORS.text,
     marginBottom: 4,
   },
   casoUbicacion: {
     fontSize: 13,
-    color: '#6B7280',
+    color: COLORS.textSecondary,
   },
   casoFooter: {
     flexDirection: 'row',
@@ -394,7 +397,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingTop: 12,
     borderTopWidth: 1,
-    borderTopColor: '#F3F4F6',
+    borderTopColor: COLORS.border,
   },
   prioridadContainer: {
     flexDirection: 'row',
@@ -402,12 +405,12 @@ const styles = StyleSheet.create({
   },
   prioridadText: {
     fontSize: 12,
-    color: '#6B7280',
+    color: COLORS.textSecondary,
     textTransform: 'capitalize',
   },
   fechaText: {
     fontSize: 12,
-    color: '#9CA3AF',
+    color: COLORS.textSecondary,
   },
   emptyContainer: {
     flex: 1,
@@ -422,13 +425,13 @@ const styles = StyleSheet.create({
   emptyText: {
     fontSize: 18,
     fontWeight: '600',
-    color: '#374151',
+    color: COLORS.text,
     marginBottom: 8,
     textAlign: 'center',
   },
   emptySubtext: {
     fontSize: 14,
-    color: '#6B7280',
+    color: COLORS.textSecondary,
     textAlign: 'center',
   },
 });

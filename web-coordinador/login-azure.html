@@ -1,0 +1,370 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login - Perito App (Azure AD)</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+
+        .login-container {
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            padding: 60px 50px;
+            max-width: 450px;
+            width: 100%;
+            text-align: center;
+        }
+
+        .logo {
+            margin-bottom: 30px;
+        }
+
+        .logo svg {
+            width: 80px;
+            height: 80px;
+        }
+
+        h1 {
+            color: #333;
+            font-size: 28px;
+            margin-bottom: 10px;
+        }
+
+        .subtitle {
+            color: #666;
+            font-size: 16px;
+            margin-bottom: 40px;
+        }
+
+        .azure-badge {
+            background: linear-gradient(135deg, #0078d4 0%, #50e6ff 100%);
+            color: white;
+            padding: 6px 16px;
+            border-radius: 20px;
+            font-size: 14px;
+            font-weight: 600;
+            display: inline-block;
+            margin-bottom: 30px;
+        }
+
+        .btn-microsoft {
+            background: white;
+            border: 2px solid #0078d4;
+            color: #0078d4;
+            padding: 16px 32px;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            width: 100%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 12px;
+            transition: all 0.3s ease;
+            margin-bottom: 20px;
+        }
+
+        .btn-microsoft:hover {
+            background: #0078d4;
+            color: white;
+            transform: translateY(-2px);
+            box-shadow: 0 8px 16px rgba(0, 120, 212, 0.3);
+        }
+
+        .btn-microsoft svg {
+            width: 24px;
+            height: 24px;
+        }
+
+        .divider {
+            margin: 30px 0;
+            text-align: center;
+            position: relative;
+        }
+
+        .divider::before {
+            content: '';
+            position: absolute;
+            left: 0;
+            top: 50%;
+            width: 100%;
+            height: 1px;
+            background: #ddd;
+        }
+
+        .divider span {
+            background: white;
+            padding: 0 15px;
+            position: relative;
+            color: #999;
+            font-size: 14px;
+        }
+
+        .features {
+            text-align: left;
+            margin-top: 30px;
+        }
+
+        .feature {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 15px;
+            color: #666;
+            font-size: 14px;
+        }
+
+        .feature svg {
+            width: 20px;
+            height: 20px;
+            color: #28a745;
+            flex-shrink: 0;
+        }
+
+        .loading {
+            display: none;
+            margin-top: 20px;
+        }
+
+        .loading.active {
+            display: block;
+        }
+
+        .spinner {
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid #0078d4;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .error-message {
+            display: none;
+            background: #dc3545;
+            color: white;
+            padding: 12px;
+            border-radius: 8px;
+            margin-top: 20px;
+            font-size: 14px;
+        }
+
+        .error-message.active {
+            display: block;
+        }
+    </style>
+</head>
+<body>
+    <div class="login-container">
+        <div class="logo">
+            <svg viewBox="0 0 96 96" fill="none">
+                <rect width="96" height="96" rx="20" fill="url(#gradient)"/>
+                <path d="M48 24L72 36V60L48 72L24 60V36L48 24Z" fill="white"/>
+                <defs>
+                    <linearGradient id="gradient" x1="0" y1="0" x2="96" y2="96">
+                        <stop offset="0%" stop-color="#667eea"/>
+                        <stop offset="100%" stop-color="#764ba2"/>
+                    </linearGradient>
+                </defs>
+            </svg>
+        </div>
+
+        <h1>Panel Coordinador</h1>
+        <p class="subtitle">Gestión de Peritos y Casos</p>
+
+        <div class="azure-badge">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="display: inline-block; vertical-align: middle; margin-right: 4px;">
+                <path d="M13.5 2L3 6v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V6l-10.5-4z"/>
+            </svg>
+            Protegido por Microsoft Azure AD
+        </div>
+
+        <button class="btn-microsoft" onclick="loginWithMicrosoft()">
+            <svg viewBox="0 0 23 23">
+                <path fill="#f35325" d="M1 1h10v10H1z"/>
+                <path fill="#81bc06" d="M12 1h10v10H12z"/>
+                <path fill="#05a6f0" d="M1 12h10v10H1z"/>
+                <path fill="#ffba08" d="M12 12h10v10H12z"/>
+            </svg>
+            Iniciar sesión con Microsoft
+        </button>
+
+        <div class="divider">
+            <span>Características</span>
+        </div>
+
+        <div class="features">
+            <div class="feature">
+                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
+                </svg>
+                <span>Autenticación segura con Azure AD</span>
+            </div>
+            <div class="feature">
+                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
+                </svg>
+                <span>Gestión de casos en tiempo real</span>
+            </div>
+            <div class="feature">
+                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
+                </svg>
+                <span>Almacenamiento en OneDrive</span>
+            </div>
+            <div class="feature">
+                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
+                </svg>
+                <span>Asignación de peritos</span>
+            </div>
+        </div>
+
+        <div class="loading" id="loading">
+            <div class="spinner"></div>
+            <p style="margin-top: 15px; color: #666;">Iniciando sesión...</p>
+        </div>
+
+        <div class="error-message" id="errorMessage">
+            Error al iniciar sesión. Por favor intenta de nuevo.
+        </div>
+    </div>
+
+    <!-- MSAL.js Library -->
+    <script src="https://alcdn.msauth.net/browser/2.38.1/js/msal-browser.min.js"></script>
+
+    <script>
+        // Configuración de Azure AD
+        const msalConfig = {
+            auth: {
+                clientId: 'c8256ffe-b0fc-406d-8832-736240ae5570',
+                authority: 'https://login.microsoftonline.com/fd32daf0-141c-4cb5-a224-10255204f33d',
+                redirectUri: window.location.origin + '/web/login-azure.html'  // Añadido /web/
+            },
+            cache: {
+                cacheLocation: 'localStorage',
+                storeAuthStateInCookie: false
+            }
+        };
+
+        const msalInstance = new msal.PublicClientApplication(msalConfig);
+
+        // Inicializar MSAL
+        msalInstance.initialize().then(() => {
+            console.log('✅ MSAL inicializado');
+
+            // Manejar respuesta de redirect si existe
+            msalInstance.handleRedirectPromise()
+                .then(response => {
+                    if (response) {
+                        console.log('✅ Login exitoso:', response);
+                        handleLoginSuccess(response);
+                    } else {
+                        // Verificar si ya hay sesión activa
+                        const accounts = msalInstance.getAllAccounts();
+                        if (accounts.length > 0) {
+                            console.log('✅ Sesión activa encontrada');
+                            msalInstance.setActiveAccount(accounts[0]);
+                            acquireTokenAndRedirect();
+                        }
+                    }
+                })
+                .catch(error => {
+                    console.error('❌ Error en redirect:', error);
+                    showError('Error al procesar login: ' + error.message);
+                });
+        });
+
+        async function loginWithMicrosoft() {
+            try {
+                document.getElementById('loading').classList.add('active');
+                document.getElementById('errorMessage').classList.remove('active');
+
+                const loginRequest = {
+                    scopes: ['User.Read', 'Files.ReadWrite.All']
+                };
+
+                // Iniciar login con popup
+                console.log('🔐 Iniciando login con Microsoft...');
+                await msalInstance.loginRedirect(loginRequest);
+
+            } catch (error) {
+                console.error('❌ Error en login:', error);
+                document.getElementById('loading').classList.remove('active');
+                showError('Error al iniciar sesión: ' + error.message);
+            }
+        }
+
+        async function acquireTokenAndRedirect() {
+            try {
+                const account = msalInstance.getActiveAccount();
+                if (!account) {
+                    throw new Error('No hay cuenta activa');
+                }
+
+                const tokenRequest = {
+                    scopes: ['User.Read', 'Files.ReadWrite.All'],
+                    account: account
+                };
+
+                const response = await msalInstance.acquireTokenSilent(tokenRequest);
+                handleLoginSuccess(response);
+
+            } catch (error) {
+                console.error('❌ Error obteniendo token:', error);
+                // Si falla el token silencioso, intentar con popup
+                try {
+                    const response = await msalInstance.acquireTokenPopup(tokenRequest);
+                    handleLoginSuccess(response);
+                } catch (popupError) {
+                    console.error('❌ Error en popup:', popupError);
+                    showError('Error al obtener token: ' + popupError.message);
+                }
+            }
+        }
+
+        function handleLoginSuccess(response) {
+            console.log('✅ Token obtenido:', response.accessToken.substring(0, 20) + '...');
+
+            // Guardar token y datos de usuario
+            localStorage.setItem('azureAccessToken', response.accessToken);
+            localStorage.setItem('azureAccount', JSON.stringify(response.account));
+
+            // Redirigir al dashboard
+            setTimeout(() => {
+                window.location.href = 'index-azure.html';
+            }, 1000);
+        }
+
+        function showError(message) {
+            const errorElement = document.getElementById('errorMessage');
+            errorElement.textContent = message;
+            errorElement.classList.add('active');
+            document.getElementById('loading').classList.remove('active');
+        }
+    </script>
+</body>
+</html>

@@ -15,4 +15,4 @@ echo PATH actualizado
 
 echo.
 echo Variables configuradas. Reinicia tu terminal.
-pause
+pausedc

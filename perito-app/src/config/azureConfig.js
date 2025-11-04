@@ -20,11 +20,11 @@ export const AZURE_CONFIG = {
   redirectUri: 'msauth.c8256ffe-b0fc-406d-8832-736240ae5570://auth',
 };
 
+import { PERITO_CONFIG } from './peritoConfig';
+
 export const API_CONFIG = {
-  // URL del backend
-  baseURL: __DEV__
-    ? 'http://10.58.230.72:5000' // Desarrollo local - IP de la PC
-    : 'https://perito-app-backend.azurewebsites.net', // Producción
+  // URL del backend (unificada con PERITO_CONFIG)
+  baseURL: (PERITO_CONFIG?.API_BASE_URL || (__DEV__ ? 'http://localhost:5000' : 'https://perito-app-backend.azurewebsites.net')).replace(/\/$/, ''),
 
   // Timeout de requests
   timeout: 30000,

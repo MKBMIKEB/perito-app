@@ -4,6 +4,9 @@
  */
 
 export const PERITO_CONFIG = {
+  // URL del backend API
+  API_BASE_URL: 'http://172.20.10.6:5000',
+
   // Configuración de carpetas Microsoft OneDrive por perito
   ONEDRIVE_FOLDERS: {
     '12345678': '/Perito_Apps/Juan_Perez_12345678',
@@ -26,14 +29,14 @@ export const PERITO_CONFIG = {
 
   // Configuración Microsoft OneDrive
   MICROSOFT_CONFIG: {
-    // Obtener de Azure Portal después del registro
-    CLIENT_ID: 'TU_CLIENT_ID_AZURE_AQUI',
-    
-    // Authority para cuentas Microsoft (personal + organizacional)
-    AUTHORITY: 'https://login.microsoftonline.com/common',
-    
+    // Client ID de Azure AD (mismo que azureConfig.js)
+    CLIENT_ID: 'c8256ffe-b0fc-406d-8832-736240ae5570',
+
+    // Authority para tenant específico (ingenieria legal)
+    AUTHORITY: 'https://login.microsoftonline.com/fd32daf0-141c-4cb5-a224-10255204f33d',
+
     // URI de redirección (debe coincidir con app.json scheme)
-    REDIRECT_URI: 'msauth.com.ingenierialegal.saviaapp://auth',
+    REDIRECT_URI: 'msauth.c8256ffe-b0fc-406d-8832-736240ae5570://auth',
     
     // Scopes de Microsoft Graph API
     SCOPES: [

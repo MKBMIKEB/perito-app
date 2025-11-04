@@ -129,7 +129,7 @@ const PhotoManagerScreen = ({ navigation }) => {
       <View style={styles.photoCard}>
         <View style={styles.photoHeader}>
           <View style={styles.photoHeaderLeft}>
-            <Camera size={20} color="#1D4ED8" />
+            <Camera size={20} color="#6B7280" />
             <Text style={styles.photoTitle}>Foto #{index + 1}</Text>
           </View>
           <View style={styles.statusBadge}>
@@ -197,7 +197,7 @@ const PhotoManagerScreen = ({ navigation }) => {
         {/* Estadísticas */}
         <View style={styles.statsContainer}>
           <View style={styles.statCard}>
-            <HardDrive size={24} color="#1D4ED8" />
+            <HardDrive size={24} color="#6B7280" />
             <Text style={styles.statValue}>{storageStats?.localPhotos || 0}</Text>
             <Text style={styles.statLabel}>Fotos Locales</Text>
           </View>
@@ -274,10 +274,10 @@ const PhotoManagerScreen = ({ navigation }) => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F8FAFC',
+    backgroundColor: '#FFFFFF',
   },
   header: {
-    backgroundColor: '#1D4ED8',
+    backgroundColor: '#000000',
     paddingTop: 50,
     paddingBottom: 20,
     paddingHorizontal: 20,
@@ -328,7 +328,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#10B981',
+    backgroundColor: '#000000',
     marginHorizontal: 20,
     marginBottom: 20,
     padding: 16,
